@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "fb-marketing-mcp": {
+      "command": "npx",
+      "args": ["-y", "fb-marketing-mcp"],
+      "env": {
+        "META_ACCESS_TOKEN": "seu_token_aqui",
+        "META_AD_ACCOUNT_ID": "act_123456789"
+      }
+    }
+  }
+}
