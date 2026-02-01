@@ -1,0 +1,15 @@
+{
+  "name": "facebook-marketing-api-scraper",
+  "type": "module",
+  "scripts": {
+    "scrape": "node scripts/scrape-docs.js",
+    "scrape:resume": "node scripts/scrape-docs.js --resume",
+    "retry-errors": "node scripts/retry-errors.js",
+    "discover": "node scripts/discover-urls.js",
+    "extract-links": "node scripts/extract-links.js"
+  },
+  "devDependencies": {
+    "puppeteer": "^24.0.0",
+    "turndown": "^7.2.0"
+  }
+}
