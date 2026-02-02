@@ -34,7 +34,7 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 ### Variáveis de Ambiente
 - `META_ACCESS_TOKEN` - Token de acesso da API (obrigatório para execução)
 - `META_AD_ACCOUNT_ID` - ID da conta de anúncios (obrigatório para execução)
-- `META_API_VERSION` - Versão da API (opcional, default: v21.0)
+- `META_API_VERSION` - Versão da API (opcional, default: v24.0)
 
 **Nota**: Para apenas consultar documentação, as variáveis de ambiente não são necessárias.
 
@@ -102,6 +102,11 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 | `create_custom_audience` | Criar audiência |
 | `get_reach_estimate` | Estimativa de alcance |
 
+### API Avançada
+| Tool | Descrição |
+|------|-----------|
+| `execute_api` | Executa chamadas customizadas à API da Meta |
+
 ## Instruções de Uso
 
 ### 1. Consulta de Documentação
@@ -131,6 +136,20 @@ Usuário: Crie uma campanha de tráfego para meu e-commerce.
 IA: [Usa create_campaign com objetivo OUTCOME_TRAFFIC]
     [Confirma criação e retorna ID]
     [Sugere próximos passos: criar ad set e anúncio]
+```
+
+### 4. Operações Avançadas (execute_api)
+
+Use `execute_api` para endpoints sem tool específica:
+
+```
+Usuário: Duplique a campanha 123456789 com todos os ad sets e anúncios.
+
+IA: [Usa execute_api com:
+    method: "POST"
+    endpoint: "123456789/copies"
+    params: { deep_copy: true, status_option: "PAUSED" }]
+    [Retorna ID da nova campanha]
 ```
 
 ## Guardrails de Segurança
@@ -175,6 +194,85 @@ IA: [Usa create_campaign com objetivo OUTCOME_TRAFFIC]
 3. Aumentar orçamento de campanhas com ROAS > 2x
 4. Ajustar targeting baseado em breakdowns
 
+## Guia: execute_api
+
+A tool `execute_api` permite executar qualquer endpoint da Facebook Marketing API.
+
+### Quando Usar
+
+- Duplicar campanhas, ad sets ou anúncios (endpoint `/copies`)
+- Acessar endpoints não cobertos por tools específicas
+- Operações em lote ou endpoints experimentais
+
+### Parâmetros
+
+| Parâmetro | Tipo | Obrigatório | Descrição |
+|-----------|------|-------------|-----------|
+| `method` | string | Sim | `GET`, `POST` ou `DELETE` |
+| `endpoint` | string | Sim | Endpoint da API (ex: `123456/copies`) |
+| `params` | object | Não | Parâmetros da requisição |
+
+### Exemplos Comuns
+
+**Duplicar Campanha (deep copy):**
+```json
+{
+  "method": "POST",
+  "endpoint": "123456789/copies",
+  "params": {
+    "deep_copy": true,
+    "status_option": "PAUSED"
+  }
+}
+```
+
+**Listar Ads de uma Campanha:**
+```json
+{
+  "method": "GET",
+  "endpoint": "123456789/ads",
+  "params": {
+    "fields": "id,name,status,creative"
+  }
+}
+```
+
+**Obter Delivery Estimate:**
+```json
+{
+  "method": "GET",
+  "endpoint": "123456789/delivery_estimate"
+}
+```
+
+### Limitações do deep_copy
+
+Ao duplicar campanhas/ad sets com `deep_copy: true`:
+
+- **Chamada síncrona**: Máximo 3 objetos (ads + ad sets + campanhas)
+- **Chamada assíncrona**: Máximo 51 objetos (use async batch requests)
+- **DSA (União Europeia)**: Campanhas targeting a UE requerem `dsa_payor` e `dsa_beneficiary` configurados na conta
+- **Campanhas finalizadas**: A cópia será agendada para iniciar no momento da criação
+
+**Erro comum (1885194)**: "A solicitação de cópia é muito grande"
+
+Se sua campanha tem mais de 3 ads/ad sets, você receberá este erro. Soluções:
+1. Use `deep_copy: false` para copiar apenas a campanha (sem filhos)
+2. Copie ad sets individualmente com seus ads
+3. Use async batch requests para copiar muitos objetos de uma vez
+
+Link: https://developers.facebook.com/docs/graph-api/asynchronous-batch-requests
+
+Se receber erro 100 "Invalid parameter", verifique também:
+- Configurações de DSA se targeting inclui UE (erros 3858079/3858081)
+- Use `get_error_code_info` para mais detalhes sobre o subcódigo
+
+### Dicas
+
+- Consulte a documentação com `search_documentation` para descobrir endpoints disponíveis
+- Use `get_endpoint_reference` para ver parâmetros aceitos por cada endpoint
+- Sempre teste com `status_option: "PAUSED"` ao criar/duplicar recursos
+
 ## Prompts Pré-Configurados
 
 Use os prompts do MCP para contexto adicional:
@@ -211,10 +309,22 @@ Use os prompts do MCP para contexto adicional:
   4. Executa create_campaign
 ```
 
+### Operações Avançadas
+```
+"Duplique minha campanha de vendas"
+→ execute_api(method: "POST", endpoint: "{id}/copies", params: { deep_copy: true })
+
+"Liste os anúncios da campanha X"
+→ execute_api(method: "GET", endpoint: "{campaign_id}/ads", params: { fields: "id,name,status" })
+
+"Qual o delivery estimate do ad set Y?"
+→ execute_api(method: "GET", endpoint: "{adset_id}/delivery_estimate")
+```
+
 ## Limitações
 
 - Não é possível fazer upload de mídia (imagens/vídeos)
-- Algumas operações avançadas podem requerer APIs adicionais
+- Para operações sem tool específica, use `execute_api` com o endpoint desejado
 - Rate limits da API da Meta se aplicam
 - Algumas features podem não estar disponíveis em todas as contas
 

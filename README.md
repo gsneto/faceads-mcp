@@ -47,7 +47,7 @@ Este MCP (Model Context Protocol) permite que IAs:
 |----------|-------------|-----------|
 | `META_ACCESS_TOKEN` | Para execução | Token de acesso da API |
 | `META_AD_ACCOUNT_ID` | Para execução | ID da conta de anúncios (act_XXXXX) |
-| `META_API_VERSION` | Não | Versão da API (default: v21.0) |
+| `META_API_VERSION` | Não | Versão da API (default: v24.0) |
 
 > **Nota**: As variáveis de ambiente são necessárias apenas para as tools de execução. A consulta de documentação funciona sem configuração.
 

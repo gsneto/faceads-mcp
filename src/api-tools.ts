@@ -28,6 +28,7 @@ import {
   type ListCustomAudiencesArgs,
   type CreateCustomAudienceArgs,
   type GetReachEstimateArgs,
+  type ExecuteApiArgs,
 } from './schemas/index.js';
 
 /**
@@ -311,6 +312,32 @@ export const apiTools = [
       required: ['targeting_spec'],
     },
   },
+
+  // ==================== API CUSTOMIZADA ====================
+  {
+    name: 'execute_api',
+    description:
+      'Executa uma chamada customizada à API da Meta. Use para endpoints sem tool específica (ex: duplicar campanha via /{id}/copies, listar ads de uma campanha, etc.).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        method: {
+          type: 'string',
+          enum: ['GET', 'POST', 'DELETE'],
+          description: 'Método HTTP da requisição',
+        },
+        endpoint: {
+          type: 'string',
+          description: 'Endpoint da API (ex: "123456789/copies", "123456789/ads")',
+        },
+        params: {
+          type: 'object',
+          description: 'Parâmetros da requisição (query params para GET, body para POST)',
+        },
+      },
+      required: ['method', 'endpoint'],
+    },
+  },
 ];
 
 /**
@@ -440,6 +467,13 @@ export async function handleApiTool(
         const validation = validateArgs(apiSchemas.get_reach_estimate, args);
         if (!validation.success) return formatValidationError(validation.error);
         return handleGetReachEstimate(client, validation.data);
+      }
+
+      // ==================== API CUSTOMIZADA ====================
+      case 'execute_api': {
+        const validation = validateArgs(apiSchemas.execute_api, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return handleExecuteApi(client, validation.data);
       }
 
       default:
@@ -781,6 +815,50 @@ async function handleGetReachEstimate(
       {
         type: 'text',
         text: `# Estimativa de Alcance\n\n**Alcance estimado:** ${result.data.users_lower_bound.toLocaleString()} - ${result.data.users_upper_bound.toLocaleString()} pessoas`,
+      },
+    ],
+  };
+}
+
+// ==================== API CUSTOMIZADA HANDLER ====================
+
+async function handleExecuteApi(
+  client: MetaClient,
+  args: ExecuteApiArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const { method, endpoint, params } = args;
+
+  let result: unknown;
+
+  switch (method) {
+    case 'GET': {
+      // Converter params para Record<string, string> para GET
+      const queryParams: Record<string, string> = {};
+      if (params) {
+        for (const [key, value] of Object.entries(params)) {
+          if (value !== undefined && value !== null) {
+            queryParams[key] = typeof value === 'object' ? JSON.stringify(value) : String(value);
+          }
+        }
+      }
+      result = await client.get(endpoint, queryParams);
+      break;
+    }
+    case 'POST': {
+      result = await client.post(endpoint, (params as Record<string, unknown>) || {});
+      break;
+    }
+    case 'DELETE': {
+      result = await client.delete(endpoint);
+      break;
+    }
+  }
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Resultado da API\n\n**Método:** ${method}\n**Endpoint:** ${endpoint}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``,
       },
     ],
   };

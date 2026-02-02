@@ -25,7 +25,7 @@ Campaign (Campanha)
 # Variáveis de ambiente necessárias
 META_ACCESS_TOKEN=EAAxxxxxxx...
 META_AD_ACCOUNT_ID=act_123456789
-META_API_VERSION=v21.0
+META_API_VERSION=v24.0
 ```
 
 ### Base URL
@@ -238,6 +238,28 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | `2` | Serviço temporariamente indisponível | Aguardar e tentar novamente |
 | `4` | Limite de chamadas excedido | Implementar rate limiting |
 | `17` | Limite de conta atingido | Reduzir frequência de chamadas |
+
+## Erros Comuns no Endpoint /copies
+
+### Erro 100 - Invalid Parameter (Subcódigos)
+
+| Subcódigo | Título | Causa | Solução |
+|-----------|--------|-------|---------|
+| `1885194` | Solicitação de cópia muito grande | Tentando copiar mais de 3 objetos (ads/ad sets) de uma vez | Use `deep_copy: false` ou async batch requests |
+| `3858079` | DSA payor ausente | Campanha targeting UE sem informações de pagador | Configure `dsa_payor` na conta |
+| `3858081` | DSA beneficiary ausente | Campanha targeting UE sem informações de beneficiário | Configure `dsa_beneficiary` na conta |
+
+### Solução para Cópias Grandes
+
+Para copiar campanhas com mais de 3 ads/ad sets, use async batch requests:
+
+```bash
+curl -F 'access_token=...' \
+  -F 'asyncbatch=[{"method":"POST","relative_url":"<ad-set-id>/copies","body":"deep_copy=true"}]' \
+  https://graph.facebook.com/v24.0
+```
+
+Documentação: https://developers.facebook.com/docs/graph-api/asynchronous-batch-requests
 
 ## Links Úteis
 

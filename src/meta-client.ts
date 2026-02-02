@@ -29,6 +29,9 @@ export interface MetaApiError {
   type: string;
   code: number;
   error_subcode?: number;
+  error_data?: string;
+  error_user_title?: string;
+  error_user_msg?: string;
   fbtrace_id?: string;
 }
 
@@ -473,6 +476,9 @@ export class MetaClient {
 export class MetaClientError extends Error {
   code: number;
   errorSubcode?: number;
+  errorData?: string;
+  errorUserTitle?: string;
+  errorUserMsg?: string;
   fbtraceId?: string;
   type: string;
 
@@ -481,6 +487,9 @@ export class MetaClientError extends Error {
     this.name = 'MetaClientError';
     this.code = error.code;
     this.errorSubcode = error.error_subcode;
+    this.errorData = error.error_data;
+    this.errorUserTitle = error.error_user_title;
+    this.errorUserMsg = error.error_user_msg;
     this.fbtraceId = error.fbtrace_id;
     this.type = error.type;
   }
@@ -491,10 +500,19 @@ export class MetaClientError extends Error {
   toString(): string {
     let msg = `Erro da API Meta (${this.code}): ${this.message}`;
     if (this.errorSubcode) {
-      msg += ` [Subcódigo: ${this.errorSubcode}]`;
+      msg += `\nSubcódigo: ${this.errorSubcode}`;
+    }
+    if (this.errorUserTitle) {
+      msg += `\n\n**${this.errorUserTitle}**`;
+    }
+    if (this.errorUserMsg) {
+      msg += `\n${this.errorUserMsg}`;
+    }
+    if (this.errorData) {
+      msg += `\nDados: ${this.errorData}`;
     }
     if (this.fbtraceId) {
-      msg += `\nFB Trace ID: ${this.fbtraceId}`;
+      msg += `\n\nFB Trace ID: ${this.fbtraceId}`;
     }
     return msg;
   }

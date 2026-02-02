@@ -168,6 +168,14 @@ export const getReachEstimateSchema = z.object({
   targeting_spec: z.record(z.string(), z.unknown()).describe('Especificação de targeting'),
 });
 
+// ==================== API CUSTOMIZADA ====================
+
+export const executeApiSchema = z.object({
+  method: z.enum(['GET', 'POST', 'DELETE']).describe('Método HTTP'),
+  endpoint: z.string().min(1).describe('Endpoint da API (ex: "123456789/copies")'),
+  params: z.record(z.string(), z.unknown()).optional().describe('Parâmetros da requisição'),
+});
+
 // ==================== TYPES ====================
 
 export type ListCampaignsArgs = z.infer<typeof listCampaignsSchema>;
@@ -191,6 +199,8 @@ export type GetAdsetInsightsArgs = z.infer<typeof getAdsetInsightsSchema>;
 export type ListCustomAudiencesArgs = z.infer<typeof listCustomAudiencesSchema>;
 export type CreateCustomAudienceArgs = z.infer<typeof createCustomAudienceSchema>;
 export type GetReachEstimateArgs = z.infer<typeof getReachEstimateSchema>;
+
+export type ExecuteApiArgs = z.infer<typeof executeApiSchema>;
 
 // ==================== SCHEMA MAP ====================
 
@@ -218,4 +228,6 @@ export const apiSchemas = {
   list_custom_audiences: listCustomAudiencesSchema,
   create_custom_audience: createCustomAudienceSchema,
   get_reach_estimate: getReachEstimateSchema,
+  // API Customizada
+  execute_api: executeApiSchema,
 } as const;

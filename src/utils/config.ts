@@ -17,7 +17,7 @@ export interface MetaConfig {
  * - META_AD_ACCOUNT_ID: ID da conta de anúncios (ex: act_123456 ou 123456)
  *
  * Variáveis opcionais:
- * - META_API_VERSION: Versão da API (default: v21.0)
+ * - META_API_VERSION: Versão da API (default: v24.0)
  */
 export function getMetaConfig(): MetaConfig | null {
   const accessToken = process.env.META_ACCESS_TOKEN;
@@ -30,7 +30,7 @@ export function getMetaConfig(): MetaConfig | null {
   return {
     accessToken,
     adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
-    apiVersion: process.env.META_API_VERSION || 'v21.0',
+    apiVersion: process.env.META_API_VERSION || 'v24.0',
   };
 }
 
@@ -49,7 +49,7 @@ export function getConfigurationError(): string {
   
 - META_ACCESS_TOKEN: Token de acesso da API (obrigatório)
 - META_AD_ACCOUNT_ID: ID da conta de anúncios, ex: act_123456 (obrigatório)
-- META_API_VERSION: Versão da API (opcional, default: v21.0)
+- META_API_VERSION: Versão da API (opcional, default: v24.0)
 
 Exemplo de configuração no MCP:
 {
