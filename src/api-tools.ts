@@ -370,7 +370,7 @@ function requireApiConfig(): MetaClient {
 export async function handleApiTool(
   name: string,
   args: unknown
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   try {
     const client = requireApiConfig();
 
@@ -379,141 +379,165 @@ export async function handleApiTool(
       case 'list_campaigns': {
         const validation = validateArgs(apiSchemas.list_campaigns, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleListCampaigns(client, validation.data);
+        return await handleListCampaigns(client, validation.data);
       }
 
       case 'get_campaign': {
         const validation = validateArgs(apiSchemas.get_campaign, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleGetCampaign(client, validation.data);
+        return await handleGetCampaign(client, validation.data);
       }
 
       case 'create_campaign': {
         const validation = validateArgs(apiSchemas.create_campaign, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleCreateCampaign(client, validation.data);
+        return await handleCreateCampaign(client, validation.data);
       }
 
       case 'update_campaign': {
         const validation = validateArgs(apiSchemas.update_campaign, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleUpdateCampaign(client, validation.data);
+        return await handleUpdateCampaign(client, validation.data);
       }
 
       case 'pause_campaign': {
         const validation = validateArgs(apiSchemas.pause_campaign, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handlePauseCampaign(client, validation.data);
+        return await handlePauseCampaign(client, validation.data);
       }
 
       case 'activate_campaign': {
         const validation = validateArgs(apiSchemas.activate_campaign, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleActivateCampaign(client, validation.data);
+        return await handleActivateCampaign(client, validation.data);
       }
 
       // ==================== AD SETS ====================
       case 'list_adsets': {
         const validation = validateArgs(apiSchemas.list_adsets, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleListAdsets(client, validation.data);
+        return await handleListAdsets(client, validation.data);
       }
 
       case 'create_adset': {
         const validation = validateArgs(apiSchemas.create_adset, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleCreateAdset(client, validation.data);
+        return await handleCreateAdset(client, validation.data);
       }
 
       case 'update_adset': {
         const validation = validateArgs(apiSchemas.update_adset, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleUpdateAdset(client, validation.data);
+        return await handleUpdateAdset(client, validation.data);
       }
 
       // ==================== ADS ====================
       case 'create_ad': {
         const validation = validateArgs(apiSchemas.create_ad, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleCreateAd(client, validation.data);
+        return await handleCreateAd(client, validation.data);
       }
 
       // ==================== CRIATIVOS ====================
       case 'create_creative': {
         const validation = validateArgs(apiSchemas.create_creative, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleCreateCreative(client, validation.data);
+        return await handleCreateCreative(client, validation.data);
       }
 
       // ==================== INSIGHTS ====================
       case 'get_account_insights': {
         const validation = validateArgs(apiSchemas.get_account_insights, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleGetAccountInsights(client, validation.data);
+        return await handleGetAccountInsights(client, validation.data);
       }
 
       case 'get_campaign_insights': {
         const validation = validateArgs(apiSchemas.get_campaign_insights, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleGetCampaignInsights(client, validation.data);
+        return await handleGetCampaignInsights(client, validation.data);
       }
 
       case 'get_adset_insights': {
         const validation = validateArgs(apiSchemas.get_adset_insights, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleGetAdsetInsights(client, validation.data);
+        return await handleGetAdsetInsights(client, validation.data);
       }
 
       // ==================== AUDIÊNCIAS ====================
       case 'list_custom_audiences': {
         const validation = validateArgs(apiSchemas.list_custom_audiences, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleListCustomAudiences(client, validation.data);
+        return await handleListCustomAudiences(client, validation.data);
       }
 
       case 'create_custom_audience': {
         const validation = validateArgs(apiSchemas.create_custom_audience, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleCreateCustomAudience(client, validation.data);
+        return await handleCreateCustomAudience(client, validation.data);
       }
 
       case 'get_reach_estimate': {
         const validation = validateArgs(apiSchemas.get_reach_estimate, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleGetReachEstimate(client, validation.data);
+        return await handleGetReachEstimate(client, validation.data);
       }
 
       // ==================== API CUSTOMIZADA ====================
       case 'execute_api': {
         const validation = validateArgs(apiSchemas.execute_api, args);
         if (!validation.success) return formatValidationError(validation.error);
-        return handleExecuteApi(client, validation.data);
+        return await handleExecuteApi(client, validation.data);
       }
 
       default:
         return {
           content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
+          isError: true,
         };
     }
   } catch (error) {
+    // Captura detalhada de qualquer tipo de erro
+    let errorDetails: string;
+
     if (error instanceof MetaClientError) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: `# Erro da API Meta\n\n${error.toString()}\n\nConsulte a documentação de erros com \`get_error_code_info\` para mais detalhes.`,
-          },
-        ],
-      };
+      // Erro estruturado da API Meta
+      errorDetails = `# Erro da API Meta
+
+**Código:** ${error.code}
+**Tipo:** ${error.type}
+**Mensagem:** ${error.message}
+${error.errorSubcode ? `**Subcódigo:** ${error.errorSubcode}` : ''}
+${error.errorUserTitle ? `\n**${error.errorUserTitle}**` : ''}
+${error.errorUserMsg ? `${error.errorUserMsg}` : ''}
+${error.errorData ? `**Dados:** ${error.errorData}` : ''}
+${error.fbtraceId ? `\n**FB Trace ID:** ${error.fbtraceId}` : ''}
+
+Consulte a documentação de erros com \`get_error_code_info\` para mais detalhes.`;
+    } else if (error instanceof Error) {
+      // Erro genérico (rede, timeout, etc.)
+      errorDetails = `# Erro
+
+**Tipo:** ${error.name}
+**Mensagem:** ${error.message}
+${error.stack ? `\n**Stack:**\n\`\`\`\n${error.stack}\n\`\`\`` : ''}`;
+    } else {
+      // Erro desconhecido
+      errorDetails = `# Erro Desconhecido
+
+\`\`\`json
+${JSON.stringify(error, null, 2)}
+\`\`\``;
     }
 
     return {
       content: [
         {
           type: 'text',
-          text: `# Erro\n\n${error instanceof Error ? error.message : String(error)}`,
+          text: errorDetails,
         },
       ],
+      isError: true,
     };
   }
 }

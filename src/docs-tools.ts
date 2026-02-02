@@ -118,7 +118,7 @@ export const docsTools = [
 export async function handleDocsTool(
   name: string,
   args: unknown
-): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   switch (name) {
     case 'search_documentation': {
       const validation = validateArgs(docsSchemas.search_documentation, args);
@@ -164,6 +164,7 @@ export async function handleDocsTool(
     default:
       return {
         content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
+        isError: true,
       };
   }
 }
@@ -197,6 +198,7 @@ function handleSearchDocumentation(args: SearchDocumentationArgs): {
 
 function handleGetDocumentByPath(args: GetDocumentByPathArgs): {
   content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
 } {
   const { path: docPath } = args;
   const docsPath = getDocsPath();
@@ -210,6 +212,7 @@ function handleGetDocumentByPath(args: GetDocumentByPathArgs): {
           text: `Documento não encontrado: ${docPath}\n\nUse 'list_sections' para ver as seções disponíveis ou 'search_documentation' para buscar.`,
         },
       ],
+      isError: true,
     };
   }
 
@@ -217,6 +220,7 @@ function handleGetDocumentByPath(args: GetDocumentByPathArgs): {
   if (!doc) {
     return {
       content: [{ type: 'text', text: `Erro ao carregar documento: ${docPath}` }],
+      isError: true,
     };
   }
 

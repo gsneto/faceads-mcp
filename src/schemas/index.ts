@@ -47,6 +47,7 @@ export function validateArgs<T>(
  */
 export function formatValidationError(error: string): {
   content: Array<{ type: 'text'; text: string }>;
+  isError: boolean;
 } {
   return {
     content: [
@@ -55,5 +56,6 @@ export function formatValidationError(error: string): {
         text: `# Erro de Validação\n\n${error}`,
       },
     ],
+    isError: true,
   };
 }

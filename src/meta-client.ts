@@ -145,8 +145,29 @@ export class MetaClient {
       url.searchParams.set(key, value);
     }
 
-    const response = await fetch(url.toString());
-    const data = (await response.json()) as MetaApiResponse<T>;
+    let response: Response;
+    try {
+      response = await fetch(url.toString());
+    } catch (networkError) {
+      // Erro de rede (DNS, conexão, etc.)
+      throw new MetaClientError({
+        message: `Erro de rede: ${networkError instanceof Error ? networkError.message : String(networkError)}`,
+        type: 'NetworkError',
+        code: -1,
+      });
+    }
+
+    let data: MetaApiResponse<T>;
+    try {
+      data = (await response.json()) as MetaApiResponse<T>;
+    } catch (parseError) {
+      // Erro ao fazer parse do JSON
+      throw new MetaClientError({
+        message: `Erro ao processar resposta (HTTP ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+        type: 'ParseError',
+        code: response.status,
+      });
+    }
 
     if (data.error) {
       throw new MetaClientError(data.error);
@@ -170,15 +191,33 @@ export class MetaClient {
       }
     }
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
-    });
+    let response: Response;
+    try {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      });
+    } catch (networkError) {
+      throw new MetaClientError({
+        message: `Erro de rede: ${networkError instanceof Error ? networkError.message : String(networkError)}`,
+        type: 'NetworkError',
+        code: -1,
+      });
+    }
 
-    const data = (await response.json()) as MetaApiResponse<T>;
+    let data: MetaApiResponse<T>;
+    try {
+      data = (await response.json()) as MetaApiResponse<T>;
+    } catch (parseError) {
+      throw new MetaClientError({
+        message: `Erro ao processar resposta (HTTP ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+        type: 'ParseError',
+        code: response.status,
+      });
+    }
 
     if (data.error) {
       throw new MetaClientError(data.error);
@@ -194,8 +233,27 @@ export class MetaClient {
     const url = new URL(`${this.baseUrl}/${endpoint}`);
     url.searchParams.set('access_token', this.config.accessToken);
 
-    const response = await fetch(url.toString(), { method: 'DELETE' });
-    const data = (await response.json()) as MetaApiResponse<{ success: boolean }>;
+    let response: Response;
+    try {
+      response = await fetch(url.toString(), { method: 'DELETE' });
+    } catch (networkError) {
+      throw new MetaClientError({
+        message: `Erro de rede: ${networkError instanceof Error ? networkError.message : String(networkError)}`,
+        type: 'NetworkError',
+        code: -1,
+      });
+    }
+
+    let data: MetaApiResponse<{ success: boolean }>;
+    try {
+      data = (await response.json()) as MetaApiResponse<{ success: boolean }>;
+    } catch (parseError) {
+      throw new MetaClientError({
+        message: `Erro ao processar resposta (HTTP ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,
+        type: 'ParseError',
+        code: response.status,
+      });
+    }
 
     if (data.error) {
       throw new MetaClientError(data.error);
