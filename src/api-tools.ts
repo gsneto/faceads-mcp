@@ -64,7 +64,8 @@ export const apiTools = [
   },
   {
     name: 'create_campaign',
-    description: 'Cria uma nova campanha. Requer API key configurada.',
+    description:
+      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps).',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -207,7 +208,8 @@ export const apiTools = [
   // ==================== INSIGHTS ====================
   {
     name: 'get_account_insights',
-    description: 'Obtém métricas agregadas da conta de anúncios. Requer API key configurada.',
+    description:
+      'Obtém métricas agregadas da conta de anúncios. Use date_preset (today, yesterday, last_7d, last_30d, this_month) ou time_range para período customizado. Métricas: impressions, clicks, spend, reach, cpc, cpm, ctr.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -316,8 +318,19 @@ export const apiTools = [
   // ==================== API CUSTOMIZADA ====================
   {
     name: 'execute_api',
-    description:
-      'Executa uma chamada customizada à API da Meta. Use para endpoints sem tool específica (ex: duplicar campanha via /{id}/copies, listar ads de uma campanha, etc.).',
+    description: `Executa chamada customizada à API da Meta para endpoints sem tool específica.
+
+CASOS DE USO:
+- Duplicar campanha: POST {id}/copies (params: deep_copy, status_option)
+- Listar ads de campanha: GET {campaign_id}/ads
+- Obter delivery estimate: GET {adset_id}/delivery_estimate
+
+LIMITAÇÕES DO /copies (deep_copy=true):
+- Máx 3 objetos em chamada síncrona (erro 1885194 se exceder)
+- Máx 51 objetos em chamada assíncrona (async batch)
+- Campanhas na UE requerem dsa_payor e dsa_beneficiary configurados
+
+DICA: Use search_documentation seguido de get_document_by_path nos documentos relevantes ou get_endpoint_reference para descobrir parâmetros disponíveis e como realizar a requisição.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -332,7 +345,8 @@ export const apiTools = [
         },
         params: {
           type: 'object',
-          description: 'Parâmetros da requisição (query params para GET, body para POST)',
+          description:
+            'Parâmetros da requisição. Para /copies: deep_copy (bool), status_option (PAUSED/ACTIVE/INHERITED_FROM_SOURCE)',
         },
       },
       required: ['method', 'endpoint'],

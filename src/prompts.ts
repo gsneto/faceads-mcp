@@ -388,6 +388,52 @@ ${
 | Criativos | create_creative |
 | Insights | get_account_insights, get_campaign_insights, get_adset_insights |
 | Audiências | list_custom_audiences, create_custom_audience, get_reach_estimate |
+| Avançado | execute_api (para endpoints sem tool específica) |
+
+## Tools de Documentação
+
+Para consultar parâmetros, campos disponíveis e exemplos, use as tools de documentação:
+
+| Tool | Uso |
+|------|-----|
+| \`search_documentation\` | Busca por termo (ex: "targeting", "billing_event", "optimization_goal") |
+| \`get_document_by_path\` | Obtém documento completo pelo caminho |
+| \`get_endpoint_reference\` | Detalhes de um endpoint específico (ex: "adsets", "campaigns") |
+| \`get_error_code_info\` | Informações sobre códigos de erro |
+| \`list_sections\` | Lista todas as seções da documentação |
+
+**Dica**: Antes de criar campanhas/adsets, busque os parâmetros disponíveis com \`search_documentation\` seguido de \`get_document_by_path\` nos documentos relevantes ou \`get_endpoint_reference\`.
+
+## Tool Avançada: execute_api
+
+Use \`execute_api\` para acessar endpoints da API do Facebook que não têm uma tool dedicada.
+
+### Exemplos de Uso
+
+**Duplicar Campanha:**
+\`\`\`
+method: POST
+endpoint: {campaign_id}/copies
+params: { deep_copy: true, status_option: "PAUSED" }
+\`\`\`
+
+**Listar Ads de uma Campanha:**
+\`\`\`
+method: GET
+endpoint: {campaign_id}/ads
+params: { fields: "id,name,status" }
+\`\`\`
+
+### Limitações do /copies
+
+- **Chamada síncrona**: Máximo 3 objetos (erro 1885194 se exceder)
+- **Chamada assíncrona**: Máximo 51 objetos (usar async batch)
+- **União Europeia**: Requer \`dsa_payor\` e \`dsa_beneficiary\` configurados
+
+Se receber erro 1885194 ("Solicitação de cópia muito grande"):
+1. Use \`deep_copy: false\` para copiar apenas a campanha
+2. Copie ad sets individualmente
+3. Use async batch requests para volumes maiores
 `;
       break;
     }
