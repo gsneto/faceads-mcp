@@ -77,7 +77,40 @@ POST /{ad_account_id}/campaigns
 }
 ```
 
-> **IMPORTANTE (v24.0+)**: O campo `is_adset_budget_sharing_enabled` é **obrigatório** para campanhas sem CBO (Campaign Budget Optimization). Use `false` para orçamento no nível do ad set ou `true` para permitir compartilhamento de até 20% entre ad sets.
+> **IMPORTANTE (v24.0+)**: O campo `is_adset_budget_sharing_enabled` é **obrigatório** para campanhas sem CBO. Veja a seção "CBO vs ABO" abaixo.
+
+## CBO vs ABO vs Budget Sharing
+
+| Tipo | Descrição | Orçamento em | Parâmetro |
+|------|-----------|--------------|-----------|
+| **CBO** | Campaign Budget Optimization - Meta distribui orçamento da campanha entre ad sets | Campanha | `campaign.daily_budget` |
+| **ABO** | Ad Set Budget Optimization - Cada ad set tem orçamento fixo | Ad Set | `adset.daily_budget` |
+| **ABO + Sharing** | ABO com compartilhamento de até 20% entre ad sets | Ad Set (flexível) | `is_adset_budget_sharing_enabled: true` |
+
+```
+CBO (orçamento na campanha):
+Campaign [daily_budget: 10000]
+├── Ad Set A (Meta decide quanto)
+├── Ad Set B (Meta decide quanto)
+└── Ad Set C (Meta decide quanto)
+
+ABO sem sharing (is_adset_budget_sharing_enabled: false):
+Campaign [sem orçamento]
+├── Ad Set A [daily_budget: 3000] → gasta exatamente R$ 30
+├── Ad Set B [daily_budget: 4000] → gasta exatamente R$ 40
+└── Ad Set C [daily_budget: 3000] → gasta exatamente R$ 30
+
+ABO com sharing (is_adset_budget_sharing_enabled: true):
+Campaign [sem orçamento]
+├── Ad Set A [daily_budget: 3000] → pode gastar R$ 24-36 (±20%)
+├── Ad Set B [daily_budget: 4000] → pode gastar R$ 32-48 (±20%)
+└── Ad Set C [daily_budget: 3000] → pode gastar R$ 24-36 (±20%)
+```
+
+**Quando usar cada um:**
+- **CBO**: Quando quer que a Meta otimize a distribuição automaticamente
+- **ABO sem sharing**: Quando precisa de controle exato do orçamento por ad set (ex: testes A/B)
+- **ABO com sharing**: Quando quer controle por ad set mas com flexibilidade para otimização
 
 ### Ad Sets (Conjuntos de Anúncios)
 

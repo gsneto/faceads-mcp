@@ -31,11 +31,15 @@ export const createCampaignSchema = z.object({
     ])
     .describe('Objetivo da campanha'),
   status: z.enum(['PAUSED', 'ACTIVE']).default('PAUSED').describe('Status inicial (default: PAUSED)'),
-  daily_budget: z.number().positive().optional().describe('Orçamento diário em centavos'),
+  daily_budget: z.number().positive().optional().describe('Orçamento diário em centavos (para CBO)'),
   special_ad_categories: z
     .array(z.enum(['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS']))
     .optional()
     .describe('Categorias especiais de anúncios'),
+  is_adset_budget_sharing_enabled: z
+    .boolean()
+    .default(false)
+    .describe('Permite compartilhamento de até 20% do orçamento entre ad sets (default: false)'),
 });
 
 export const updateCampaignSchema = z.object({
@@ -62,7 +66,11 @@ export const listAdsetsSchema = z.object({
 export const createAdsetSchema = z.object({
   name: z.string().min(1).describe('Nome do ad set'),
   campaign_id: z.string().min(1).describe('ID da campanha pai'),
-  daily_budget: z.number().positive().optional().describe('Orçamento diário em centavos'),
+  daily_budget: z
+    .number()
+    .min(533, 'Orçamento mínimo no Brasil é R$ 5,33 (533 centavos)')
+    .optional()
+    .describe('Orçamento diário em centavos (mínimo 533 no Brasil, recomendado 600+)'),
   billing_event: z
     .enum(['IMPRESSIONS', 'LINK_CLICKS', 'APP_INSTALLS', 'PAGE_LIKES', 'POST_ENGAGEMENT', 'VIDEO_VIEWS'])
     .describe('Evento de cobrança'),
@@ -80,6 +88,15 @@ export const createAdsetSchema = z.object({
     .describe('Objetivo de otimização'),
   targeting: z.record(z.string(), z.unknown()).describe('Especificação de targeting'),
   status: z.enum(['PAUSED', 'ACTIVE']).default('PAUSED').describe('Status inicial'),
+  bid_strategy: z
+    .enum(['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'])
+    .default('LOWEST_COST_WITHOUT_CAP')
+    .describe('Estratégia de lance (default: LOWEST_COST_WITHOUT_CAP)'),
+  bid_amount: z
+    .number()
+    .positive()
+    .optional()
+    .describe('Valor do lance em centavos (obrigatório para BID_CAP e COST_CAP)'),
 });
 
 export const updateAdsetSchema = z.object({

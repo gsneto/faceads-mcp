@@ -65,7 +65,7 @@ export const apiTools = [
   {
     name: 'create_campaign',
     description:
-      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps). IMPORTANTE: Para campanhas sem CBO, use execute_api incluindo is_adset_budget_sharing_enabled: false.',
+      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps). O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -76,11 +76,15 @@ export const apiTools = [
           description: 'Objetivo da campanha',
         },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial (default: PAUSED)' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (CBO). Se não usar CBO, prefira execute_api' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (para CBO - Campaign Budget Optimization)' },
         special_ad_categories: {
           type: 'array',
           items: { type: 'string', enum: ['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS'] },
           description: 'Categorias especiais de anúncios',
+        },
+        is_adset_budget_sharing_enabled: {
+          type: 'boolean',
+          description: 'Permite compartilhamento de até 20% do orçamento entre ad sets (default: false)',
         },
       },
       required: ['name', 'objective'],
@@ -136,7 +140,7 @@ export const apiTools = [
   },
   {
     name: 'create_adset',
-    description: 'Cria um novo conjunto de anúncios. IMPORTANTE: Requer bid_strategy (use execute_api com bid_strategy: LOWEST_COST_WITHOUT_CAP). Orçamento mínimo no Brasil: R$5,33 (533 centavos). Use pelo menos 600 centavos para garantir.',
+    description: 'Cria um novo conjunto de anúncios. O bid_strategy é incluído automaticamente como LOWEST_COST_WITHOUT_CAP. Orçamento mínimo no Brasil: R$5,33 (533 centavos). Use pelo menos 600 centavos para garantir.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -155,6 +159,12 @@ export const apiTools = [
         },
         targeting: { type: 'object', description: 'Especificação de targeting' },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial' },
+        bid_strategy: {
+          type: 'string',
+          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'],
+          description: 'Estratégia de lance (default: LOWEST_COST_WITHOUT_CAP)',
+        },
+        bid_amount: { type: 'number', description: 'Valor do lance em centavos (obrigatório para BID_CAP e COST_CAP)' },
       },
       required: ['name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
     },
@@ -586,18 +596,22 @@ async function handleCreateCampaign(
   client: MetaClient,
   args: CreateCampaignArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Sempre incluir is_adset_budget_sharing_enabled para evitar erro 4834011
+  const is_adset_budget_sharing_enabled = args.is_adset_budget_sharing_enabled ?? false;
+  
   const result = await client.createCampaign({
     name: args.name,
     objective: args.objective,
     status: args.status,
     daily_budget: args.daily_budget,
     special_ad_categories: args.special_ad_categories,
+    is_adset_budget_sharing_enabled,
   });
   return {
     content: [
       {
         type: 'text',
-        text: `# Campanha Criada\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Objetivo:** ${args.objective}\n**Status:** ${args.status}`,
+        text: `# Campanha Criada\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Objetivo:** ${args.objective}\n**Status:** ${args.status}\n**Budget Sharing:** ${is_adset_budget_sharing_enabled}`,
       },
     ],
   };
@@ -673,6 +687,21 @@ async function handleCreateAdset(
   client: MetaClient,
   args: CreateAdsetArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Sempre incluir bid_strategy para evitar erro 2490487
+  const bid_strategy = args.bid_strategy ?? 'LOWEST_COST_WITHOUT_CAP';
+  
+  // Validar orçamento mínimo (533 centavos no Brasil)
+  if (args.daily_budget && args.daily_budget < 533) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro de Validação\n\n**Orçamento muito baixo:** R$ ${(args.daily_budget / 100).toFixed(2)}\n\nO orçamento mínimo no Brasil é R$ 5,33 (533 centavos). Use pelo menos 600 centavos para garantir.`,
+        },
+      ],
+    };
+  }
+  
   const result = await client.createAdSet({
     name: args.name,
     campaign_id: args.campaign_id,
@@ -681,12 +710,14 @@ async function handleCreateAdset(
     targeting: args.targeting,
     daily_budget: args.daily_budget,
     status: args.status,
+    bid_strategy,
+    bid_amount: args.bid_amount,
   });
   return {
     content: [
       {
         type: 'text',
-        text: `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}`,
+        text: `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Bid Strategy:** ${bid_strategy}`,
       },
     ],
   };

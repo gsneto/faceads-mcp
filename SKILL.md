@@ -162,9 +162,23 @@ IA: [Usa execute_api com:
 - **Descobrir o ID da conta real** antes de usar `execute_api` com `GET me/adaccounts`
 
 ### Parâmetros Obrigatórios (v24.0+)
-- **Campanhas sem CBO**: Incluir `is_adset_budget_sharing_enabled: false`
+- **Campanhas sem CBO**: Incluir `is_adset_budget_sharing_enabled` (ver diferença abaixo)
 - **Ad Sets**: Incluir `bid_strategy` (ex: `LOWEST_COST_WITHOUT_CAP`)
 - **Orçamento mínimo (Brasil)**: R$ 5,33/dia (533 centavos)
+
+### CBO vs ABO (Importante!)
+
+**NÃO confunda** `is_adset_budget_sharing_enabled` com CBO:
+
+| Tipo | Orçamento | Parâmetro |
+|------|-----------|-----------|
+| **CBO** | Na campanha, Meta distribui | `campaign.daily_budget` |
+| **ABO** | Fixo em cada ad set | `adset.daily_budget` + `is_adset_budget_sharing_enabled: false` |
+| **ABO + Sharing** | Em cada ad set, com ±20% flexibilidade | `adset.daily_budget` + `is_adset_budget_sharing_enabled: true` |
+
+- Use **CBO** para otimização automática
+- Use **ABO sem sharing** para testes A/B com controle exato
+- Use **ABO com sharing** para controle com alguma flexibilidade
 
 ### Limites
 - Não exceder orçamentos sem confirmação explícita

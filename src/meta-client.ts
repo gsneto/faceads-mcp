@@ -295,10 +295,13 @@ export class MetaClient {
     special_ad_categories?: string[];
     daily_budget?: number;
     lifetime_budget?: number;
+    is_adset_budget_sharing_enabled?: boolean;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/campaigns`, {
       ...params,
       special_ad_categories: params.special_ad_categories || [],
+      // Campo obrigatório a partir da v24.0 para campanhas sem CBO
+      is_adset_budget_sharing_enabled: params.is_adset_budget_sharing_enabled ?? false,
     });
   }
 
@@ -349,6 +352,7 @@ export class MetaClient {
     billing_event: string;
     optimization_goal: string;
     bid_amount?: number;
+    bid_strategy?: string;
     daily_budget?: number;
     lifetime_budget?: number;
     targeting: object;
@@ -356,7 +360,11 @@ export class MetaClient {
     start_time?: string;
     end_time?: string;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, params);
+    return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, {
+      ...params,
+      // Campo obrigatório a partir da v24.0
+      bid_strategy: params.bid_strategy ?? 'LOWEST_COST_WITHOUT_CAP',
+    });
   }
 
   /**
@@ -491,9 +499,11 @@ export class MetaClient {
 
   /**
    * Lista audiências customizadas
+   * NOTA: O campo approximate_count foi removido da API v24.0.
+   * Use approximate_count_lower_bound e approximate_count_upper_bound se precisar do tamanho.
    */
   async listCustomAudiences(
-    fields: string[] = ['id', 'name', 'subtype', 'approximate_count']
+    fields: string[] = ['id', 'name', 'subtype']
   ): Promise<{ data: CustomAudience[] }> {
     return this.get<{ data: CustomAudience[] }>(`${this.config.adAccountId}/customaudiences`, {
       fields: fields.join(','),
