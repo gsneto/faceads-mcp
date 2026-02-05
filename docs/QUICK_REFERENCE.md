@@ -34,6 +34,25 @@ META_API_VERSION=v24.0
 https://graph.facebook.com/{api_version}/
 ```
 
+### Descobrir ID da Conta
+
+**SEMPRE** descubra o ID real da conta antes de operações com `execute_api`:
+
+```
+GET /me/adaccounts?fields=id,name,account_status
+```
+
+Resposta:
+```json
+{
+  "data": [
+    {"id": "act_618288566086470", "name": "Minha Conta", "account_status": 1}
+  ]
+}
+```
+
+> **NUNCA** invente ou use IDs de exemplo da documentação. O ID correto está configurado em `META_AD_ACCOUNT_ID` ou pode ser descoberto via `me/adaccounts`.
+
 ## Endpoints Principais
 
 ### Campanhas
@@ -53,9 +72,12 @@ POST /{ad_account_id}/campaigns
   "name": "Minha Campanha",
   "objective": "OUTCOME_SALES",
   "status": "PAUSED",
-  "special_ad_categories": []
+  "special_ad_categories": [],
+  "is_adset_budget_sharing_enabled": false
 }
 ```
+
+> **IMPORTANTE (v24.0+)**: O campo `is_adset_budget_sharing_enabled` é **obrigatório** para campanhas sem CBO (Campaign Budget Optimization). Use `false` para orçamento no nível do ad set ou `true` para permitir compartilhamento de até 20% entre ad sets.
 
 ### Ad Sets (Conjuntos de Anúncios)
 
@@ -72,9 +94,10 @@ POST /{ad_account_id}/adsets
 {
   "name": "Meu Ad Set",
   "campaign_id": "123456789",
-  "daily_budget": 5000,
+  "daily_budget": 600,
   "billing_event": "IMPRESSIONS",
   "optimization_goal": "LINK_CLICKS",
+  "bid_strategy": "LOWEST_COST_WITHOUT_CAP",
   "targeting": {
     "geo_locations": {
       "countries": ["BR"]
@@ -85,6 +108,10 @@ POST /{ad_account_id}/adsets
   "status": "PAUSED"
 }
 ```
+
+> **IMPORTANTE**:
+> - O `bid_strategy` é **obrigatório**. Use `LOWEST_COST_WITHOUT_CAP` para lance automático ou `COST_CAP`/`BID_CAP` com `bid_amount`.
+> - Orçamento mínimo varia por país. No Brasil, o mínimo é **R$ 5,33/dia (533 centavos)**. Use pelo menos `600` para garantir.
 
 ### Anúncios
 
@@ -227,6 +254,16 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | `CONVERSIONS` | Maximizar conversões |
 | `VALUE` | Maximizar valor de conversão |
 
+## Campos Depreciados/Alterados (v24.0)
+
+| Campo | Objeto | Status | Alternativa |
+|-------|--------|--------|-------------|
+| `approximate_count` | CustomAudience | **Removido** | Use `approximate_count_lower_bound` e `approximate_count_upper_bound` |
+| `is_adset_budget_sharing_enabled` | Campaign | **Obrigatório** | Sempre incluir ao criar campanhas sem CBO |
+| `bid_strategy` | AdSet | **Obrigatório** | Sempre incluir (`LOWEST_COST_WITHOUT_CAP`, `COST_CAP`, `BID_CAP`) |
+| `image_crops` (191x100) | Creative | **Depreciado** | Use apenas `100x100` ou omita para crop automático |
+| `standard_enhancements` | Creative | **Removido v22.0+** | Omitir ao criar criativos |
+
 ## Códigos de Erro Frequentes
 
 | Código | Descrição | Solução |
@@ -238,6 +275,15 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | `2` | Serviço temporariamente indisponível | Aguardar e tentar novamente |
 | `4` | Limite de chamadas excedido | Implementar rate limiting |
 | `17` | Limite de conta atingido | Reduzir frequência de chamadas |
+
+### Subcódigos do Erro 100 (mais comuns)
+
+| Subcódigo | Problema | Solução |
+|-----------|----------|---------|
+| `4834011` | `is_adset_budget_sharing_enabled` ausente | Adicione o campo ao criar campanhas sem CBO |
+| `2490487` | Bid strategy/amount ausente | Adicione `bid_strategy` ao criar ad sets |
+| `1885272` | Orçamento muito baixo | Use pelo menos R$ 5,33 (533 centavos) no Brasil |
+| `33` | Objeto não existe | Verifique se o ID está correto (use `me/adaccounts`) |
 
 ## Erros Comuns no Endpoint /copies
 

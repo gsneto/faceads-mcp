@@ -65,7 +65,7 @@ export const apiTools = [
   {
     name: 'create_campaign',
     description:
-      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps).',
+      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps). IMPORTANTE: Para campanhas sem CBO, use execute_api incluindo is_adset_budget_sharing_enabled: false.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -76,7 +76,7 @@ export const apiTools = [
           description: 'Objetivo da campanha',
         },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial (default: PAUSED)' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (CBO). Se não usar CBO, prefira execute_api' },
         special_ad_categories: {
           type: 'array',
           items: { type: 'string', enum: ['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS'] },
@@ -136,13 +136,13 @@ export const apiTools = [
   },
   {
     name: 'create_adset',
-    description: 'Cria um novo conjunto de anúncios. Requer API key configurada.',
+    description: 'Cria um novo conjunto de anúncios. IMPORTANTE: Requer bid_strategy (use execute_api com bid_strategy: LOWEST_COST_WITHOUT_CAP). Orçamento mínimo no Brasil: R$5,33 (533 centavos). Use pelo menos 600 centavos para garantir.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Nome do ad set' },
         campaign_id: { type: 'string', description: 'ID da campanha pai' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil, recomendado 600+)' },
         billing_event: {
           type: 'string',
           enum: ['IMPRESSIONS', 'LINK_CLICKS', 'APP_INSTALLS', 'PAGE_LIKES', 'POST_ENGAGEMENT', 'VIDEO_VIEWS'],
@@ -278,11 +278,11 @@ export const apiTools = [
   // ==================== AUDIÊNCIAS ====================
   {
     name: 'list_custom_audiences',
-    description: 'Lista audiências customizadas da conta. Requer API key configurada.',
+    description: 'Lista audiências customizadas da conta. NOTA: O campo approximate_count foi removido. Use approximate_count_lower_bound e approximate_count_upper_bound, ou omita campos de tamanho.',
     inputSchema: {
       type: 'object' as const,
       properties: {
-        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar. Evite approximate_count (depreciado)' },
       },
     },
   },
@@ -324,12 +324,14 @@ CASOS DE USO:
 - Duplicar campanha: POST {id}/copies (params: deep_copy, status_option)
 - Listar ads de campanha: GET {campaign_id}/ads
 - Obter delivery estimate: GET {adset_id}/delivery_estimate
-- Upload de imagem: POST {ad_account_id}/adimages
+- Descobrir ID da conta: GET me/adaccounts (FAÇA ISSO PRIMEIRO se não souber o ID!)
+- Criar campanha com campos novos: POST {ad_account_id}/campaigns (incluir is_adset_budget_sharing_enabled)
+- Criar ad set com bid_strategy: POST {ad_account_id}/adsets (incluir bid_strategy: LOWEST_COST_WITHOUT_CAP)
 
 PLACEHOLDER DE CONTA:
 - Use {ad_account_id} no endpoint para usar a conta configurada em META_AD_ACCOUNT_ID
 - Se passar um act_XXXX diferente do configurado, será substituído automaticamente
-- Exemplo: "{ad_account_id}/adimages" → "act_123456789/adimages"
+- NUNCA invente IDs! Use me/adaccounts para descobrir o ID real
 
 LIMITAÇÕES DO /copies (deep_copy=true):
 - Máx 3 objetos em chamada síncrona (erro 1885194 se exceder)

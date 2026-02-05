@@ -159,6 +159,12 @@ IA: [Usa execute_api com:
 - Criar campanhas inicialmente com status PAUSED
 - Validar parâmetros obrigatórios antes de executar
 - **NUNCA inventar IDs de conta** - sempre usar `META_AD_ACCOUNT_ID` configurado no ambiente
+- **Descobrir o ID da conta real** antes de usar `execute_api` com `GET me/adaccounts`
+
+### Parâmetros Obrigatórios (v24.0+)
+- **Campanhas sem CBO**: Incluir `is_adset_budget_sharing_enabled: false`
+- **Ad Sets**: Incluir `bid_strategy` (ex: `LOWEST_COST_WITHOUT_CAP`)
+- **Orçamento mínimo (Brasil)**: R$ 5,33/dia (533 centavos)
 
 ### Limites
 - Não exceder orçamentos sem confirmação explícita
@@ -343,6 +349,64 @@ Use os prompts do MCP para contexto adicional:
 - Para operações sem tool específica, use `execute_api` com o endpoint desejado
 - Rate limits da API da Meta se aplicam
 - Algumas features podem não estar disponíveis em todas as contas
+
+## Erros Comuns e Soluções
+
+### Erro: ID da Conta Não Existe (subcódigo 33)
+
+**Causa**: Uso de ID de conta inventado ou de exemplo da documentação.
+
+**Solução**: Sempre descubra o ID real ANTES de usar `execute_api`:
+```json
+{
+  "method": "GET",
+  "endpoint": "me/adaccounts",
+  "params": { "fields": "id,name,account_status" }
+}
+```
+
+### Erro: `is_adset_budget_sharing_enabled` Obrigatório (subcódigo 4834011)
+
+**Causa**: Campo obrigatório a partir da v24.0 para campanhas sem CBO.
+
+**Solução**: Adicione ao criar campanhas:
+```json
+{
+  "is_adset_budget_sharing_enabled": false
+}
+```
+
+### Erro: Bid Strategy Obrigatório (subcódigo 2490487)
+
+**Causa**: Ad sets precisam de estratégia de lance definida.
+
+**Solução**: Adicione `bid_strategy` ao criar ad sets:
+```json
+{
+  "bid_strategy": "LOWEST_COST_WITHOUT_CAP"
+}
+```
+
+### Erro: Orçamento Muito Baixo (subcódigo 1885272)
+
+**Causa**: Orçamento mínimo varia por país. No Brasil é R$ 5,33/dia.
+
+**Solução**: Use pelo menos 600 centavos (R$ 6,00) para garantir:
+```json
+{
+  "daily_budget": 600
+}
+```
+
+### Erro: Campo `approximate_count` Não Existe
+
+**Causa**: Campo foi removido de Custom Audiences.
+
+**Solução**: Use campos alternativos:
+- `approximate_count_lower_bound`
+- `approximate_count_upper_bound`
+
+Ou omita o campo na lista de fields.
 
 ## Troubleshooting: Duplicação de Campanhas
 
