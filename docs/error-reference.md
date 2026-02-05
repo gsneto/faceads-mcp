@@ -363,6 +363,10 @@ A campanha tem opções que não podem ser mais usadas para públicos menores de
 
 O criativo está qualificado para os aprimoramentos padrão, mas o enroll\_status não foi fornecido. Decida se quer ou não ativar os aprimoramentos padrão. Saiba mais [aqui](https://l.facebook.com/l.php?u=https%3A%2F%2Ffburl.com%2Fhyth50xo&h=AT2qFhOjnzNVBeMpJc807RIjlkDy-s1hQafwVqhzQNnK1UzEvPIdW3K2h2Ui_76-TvzCn20sh8PHFHSvt5WJEmtUeCz8hkaRVaDLxRyIgtgzJ0gfNw17HxrdXnHrEr6TaZOoVtjRuh7HFfsjHtyb0mySfm6Q6-hBm2qXo0SQj_A)
 
+`3858504`
+
+O criativo não deve incluir aprimoramentos padrão. A partir da API v22.0, o opt-in/out de `standard_enhancements` foi descontinuado. Recrie o criativo sem o campo `standard_enhancements` no `degrees_of_freedom_spec`. Use features individuais do Advantage+ Creative se necessário.
+
 `3858152`
 
 O anúncio pertence a um conjunto que precisa ser publicado com informações de beneficiário e pagador. Acesse o conjunto de anúncios para adicionar ou revisar essas informações. Depois, clique em "Publicar".

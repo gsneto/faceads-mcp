@@ -6,7 +6,7 @@
  */
 
 import { MetaClient, MetaClientError } from './meta-client.js';
-import { getConfigurationError, isMetaConfigured } from './utils/config.js';
+import { getConfigurationError, getMetaConfig, isMetaConfigured } from './utils/config.js';
 import {
   apiSchemas,
   validateArgs,
@@ -324,6 +324,12 @@ CASOS DE USO:
 - Duplicar campanha: POST {id}/copies (params: deep_copy, status_option)
 - Listar ads de campanha: GET {campaign_id}/ads
 - Obter delivery estimate: GET {adset_id}/delivery_estimate
+- Upload de imagem: POST {ad_account_id}/adimages
+
+PLACEHOLDER DE CONTA:
+- Use {ad_account_id} no endpoint para usar a conta configurada em META_AD_ACCOUNT_ID
+- Se passar um act_XXXX diferente do configurado, será substituído automaticamente
+- Exemplo: "{ad_account_id}/adimages" → "act_123456789/adimages"
 
 LIMITAÇÕES DO /copies (deep_copy=true):
 - Máx 3 objetos em chamada síncrona (erro 1885194 se exceder)
@@ -860,11 +866,51 @@ async function handleGetReachEstimate(
 
 // ==================== API CUSTOMIZADA HANDLER ====================
 
+/**
+ * Processa o endpoint substituindo placeholders e validando IDs de conta
+ */
+function processEndpoint(endpoint: string): { processedEndpoint: string; warnings: string[] } {
+  const config = getMetaConfig();
+  const warnings: string[] = [];
+  let processedEndpoint = endpoint;
+
+  if (!config) {
+    return { processedEndpoint, warnings };
+  }
+
+  const configuredAccountId = config.adAccountId;
+
+  // 1. Substituir placeholder {ad_account_id} pelo ID configurado
+  if (processedEndpoint.includes('{ad_account_id}')) {
+    processedEndpoint = processedEndpoint.replace('{ad_account_id}', configuredAccountId);
+  }
+
+  // 2. Detectar e corrigir se alguém passou um ID de conta diferente do configurado
+  // Padrão: act_NUMEROS no início do endpoint (ex: act_123456789/adimages)
+  const accountIdPattern = /^act_\d+/;
+  const match = processedEndpoint.match(accountIdPattern);
+
+  if (match) {
+    const providedAccountId = match[0];
+    if (providedAccountId !== configuredAccountId) {
+      warnings.push(
+        `⚠️ ID de conta substituído: "${providedAccountId}" → "${configuredAccountId}" (usando META_AD_ACCOUNT_ID configurado)`
+      );
+      processedEndpoint = processedEndpoint.replace(accountIdPattern, configuredAccountId);
+    }
+  }
+
+  return { processedEndpoint, warnings };
+}
+
 async function handleExecuteApi(
   client: MetaClient,
   args: ExecuteApiArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const { method, endpoint, params } = args;
+
+  // Processar endpoint (substituir placeholders e validar IDs)
+  const { processedEndpoint, warnings } = processEndpoint(endpoint);
 
   let result: unknown;
 
@@ -879,24 +925,27 @@ async function handleExecuteApi(
           }
         }
       }
-      result = await client.get(endpoint, queryParams);
+      result = await client.get(processedEndpoint, queryParams);
       break;
     }
     case 'POST': {
-      result = await client.post(endpoint, (params as Record<string, unknown>) || {});
+      result = await client.post(processedEndpoint, (params as Record<string, unknown>) || {});
       break;
     }
     case 'DELETE': {
-      result = await client.delete(endpoint);
+      result = await client.delete(processedEndpoint);
       break;
     }
   }
+
+  // Montar resposta com avisos se houver
+  const warningsText = warnings.length > 0 ? `\n\n${warnings.join('\n')}\n` : '';
 
   return {
     content: [
       {
         type: 'text',
-        text: `# Resultado da API\n\n**Método:** ${method}\n**Endpoint:** ${endpoint}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``,
+        text: `# Resultado da API${warningsText}\n\n**Método:** ${method}\n**Endpoint:** ${processedEndpoint}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``,
       },
     ],
   };

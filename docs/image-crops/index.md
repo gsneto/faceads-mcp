@@ -30,6 +30,8 @@ Quando usado, **esse recurso deve ser aplicado a todos os posicionamentos onde u
 
 ## Limitações
 
+> **⚠️ Importante**: A chave de corte `191x100` foi **descontinuada**. Use apenas `100x100`. Anúncios com `191x100` não podem ser duplicados e retornarão erro `2490085`. Se precisar recriar um criativo com crop obsoleto, omita o campo `image_crops` completamente e deixe a API usar o crop padrão automático.
+
 Os cortes de imagem funcionam apenas para criativos de anúncio com `image_file` ou `image_hash`. `Page posts` não são compatíveis. Os valores precisam obedecer a estas restrições:
 
 -   Os pontos especificados por `(x, y)` precisam estar dentro da imagem. Um retângulo que se estende além dos limites da imagem é considerado inválido.

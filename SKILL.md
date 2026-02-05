@@ -158,11 +158,13 @@ IA: [Usa execute_api com:
 - Confirmar com o usuário antes de criar ou modificar recursos
 - Criar campanhas inicialmente com status PAUSED
 - Validar parâmetros obrigatórios antes de executar
+- **NUNCA inventar IDs de conta** - sempre usar `META_AD_ACCOUNT_ID` configurado no ambiente
 
 ### Limites
 - Não exceder orçamentos sem confirmação explícita
 - Não ativar campanhas automaticamente
 - Alertar sobre targeting muito restrito ou muito amplo
+- Não usar IDs de conta arbitrários - a conta de anúncios é definida pela variável de ambiente
 
 ### Boas Práticas
 - Sugerir nomenclatura consistente
@@ -211,6 +213,20 @@ A tool `execute_api` permite executar qualquer endpoint da Facebook Marketing AP
 | `method` | string | Sim | `GET`, `POST` ou `DELETE` |
 | `endpoint` | string | Sim | Endpoint da API (ex: `123456/copies`) |
 | `params` | object | Não | Parâmetros da requisição |
+
+### Placeholder de Conta
+
+Use `{ad_account_id}` no endpoint para referenciar a conta configurada em `META_AD_ACCOUNT_ID`:
+
+```json
+{
+  "method": "POST",
+  "endpoint": "{ad_account_id}/adimages",
+  "params": { "filename": "/path/to/image.png" }
+}
+```
+
+**Proteção automática**: Se você passar um `act_XXXX` diferente do configurado, a tool substituirá automaticamente pelo ID correto e exibirá um aviso.
 
 ### Exemplos Comuns
 
@@ -327,6 +343,53 @@ Use os prompts do MCP para contexto adicional:
 - Para operações sem tool específica, use `execute_api` com o endpoint desejado
 - Rate limits da API da Meta se aplicam
 - Algumas features podem não estar disponíveis em todas as contas
+
+## Troubleshooting: Duplicação de Campanhas
+
+### Erros Comuns na Duplicação
+
+| Subcódigo | Problema | Solução |
+|-----------|----------|---------|
+| `1885194` | Solicitação de cópia muito grande (>3 objetos) | Use async batch ou copie objetos individualmente |
+| `2490085` | Crop key `191x100` obsoleto | Recrie o criativo sem `image_crops` ou use apenas `100x100` |
+| `3858504` | Criativo com `standard_enhancements` | Recrie o criativo sem aprimoramentos padrão (depreciado na v22.0+) |
+| `1885183` | Post criado por app em modo development | O app precisa estar em modo público/produção |
+
+### image_hash vs image_crops
+
+**Conceito importante**: O `image_hash` é reutilizável, mas o `image_crops` pode estar obsoleto.
+
+```json
+// ❌ Original (com crop obsoleto):
+{
+  "image_hash": "65b50b898da88607da98c7ebc6adf615",
+  "image_crops": {"191x100": [[0, 94], [1080, 659]]}
+}
+
+// ✅ Solução (sem crop, usa padrão automático):
+{
+  "image_hash": "65b50b898da88607da98c7ebc6adf615"
+}
+```
+
+**Trade-off**: Ao omitir `image_crops`, a API usa o crop padrão automático. A imagem pode aparecer cortada de forma diferente em alguns posicionamentos, mas funciona.
+
+### Workaround para Criativos Problemáticos
+
+Quando a duplicação falha por criativos incompatíveis:
+
+1. **Obtenha os dados do criativo original** (image_hash, textos, links)
+2. **Crie um novo criativo** passando apenas os campos essenciais:
+   - `image_hash` (sem `image_crops`)
+   - Textos e links
+   - Omita `standard_enhancements` e `degrees_of_freedom_spec`
+3. **Crie o ad** associando o novo criativo ao ad set
+
+### Placement Asset Customization
+
+Anúncios com regras complexas de customização por posicionamento (feed, stories, reels com crops diferentes) podem falhar na duplicação. 
+
+**Solução simples**: Recrie com um criativo único e deixe a Meta otimizar automaticamente.
 
 ## Suporte
 
