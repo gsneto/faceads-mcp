@@ -2,6 +2,8 @@
 
 Skill para transformar a IA em um gestor de tráfego profissional para a plataforma Meta Ads.
 
+> **Nota:** Este arquivo contém a documentação técnica genérica. Para thresholds de performance, regras de otimização e valores específicos por localização, veja o [PLAYBOOK.md](PLAYBOOK.md).
+
 ## Descrição
 
 Esta skill habilita a IA a atuar como um gestor de tráfego completo, capaz de:
@@ -201,7 +203,7 @@ IA: [Usa execute_api com:
 ### Parâmetros Obrigatórios (v24.0+)
 - **Campanhas sem CBO**: Incluir `is_adset_budget_sharing_enabled` (ver diferença abaixo)
 - **Ad Sets**: Incluir `bid_strategy` (ex: `LOWEST_COST_WITHOUT_CAP`)
-- **Orçamento mínimo (Brasil)**: R$ 5,33/dia (533 centavos)
+- **Orçamento mínimo**: Varia por país (consulte [PLAYBOOK.md](PLAYBOOK.md) para valores específicos)
 
 ### CBO vs ABO (Importante!)
 
@@ -253,9 +255,11 @@ IA: [Usa execute_api com:
 ### Otimização Rápida
 
 1. Verificar métricas principais (CTR, CPC, ROAS)
-2. Pausar campanhas com CTR < 0.5%
-3. Aumentar orçamento de campanhas com ROAS > 2x
+2. Identificar campanhas abaixo dos thresholds definidos
+3. Escalar campanhas com bom desempenho
 4. Ajustar targeting baseado em breakdowns
+
+> **Nota:** Para thresholds específicos (CTR mínimo, ROAS alvo, etc.), consulte [PLAYBOOK.md](PLAYBOOK.md).
 
 ### Análise de Eficiência Real (Atribuição)
 
@@ -263,11 +267,10 @@ IA: [Usa execute_api com:
    - `get_attribution_comparison(object_id, object_type)`
 2. Calcular % incremental
    - `incremental / all_conversions`
-3. Identificar alertas
-   - < 30% incremental = risco de pagar por conversões orgânicas
-4. Recomendar ações
-   - Testar First Conversion optimization
-   - Revisar targeting para público mais frio
+3. Avaliar conforme thresholds definidos
+4. Recomendar ações baseadas na análise
+
+> **Nota:** Para thresholds de % incremental e regras de ação, consulte [PLAYBOOK.md](PLAYBOOK.md).
 
 ## Guia: Atribuição e Janelas de Conversão
 
@@ -328,21 +331,21 @@ IA: [Usa get_attribution_comparison]
 Resultado:
 | Modelo | Conversões | CPA |
 |--------|------------|-----|
-| All Conversions | 158 | R$ 46.58 |
-| 7d Click | 32 | R$ 229.99 |
-| Incremental | 24 | R$ 306.66 |
+| All Conversions | 158 | [valor na moeda local] |
+| 7d Click | 32 | [valor na moeda local] |
+| Incremental | 24 | [valor na moeda local] |
 
-% Incremental: 15.2% das conversões totais
-⚠️ ALERTA: Menos de 30% das conversões são incrementais!
+% Incremental: X% das conversões totais
+→ Interprete conforme thresholds do PLAYBOOK.md
 ```
 
 ### Regra Prática de Diagnóstico
 
-| % Incremental | Interpretação | Ação Recomendada |
-|---------------|---------------|------------------|
-| > 50% | Saudável | Manter estratégia |
-| 30-50% | Atenção | Considerar testar First Conversion |
-| < 30% | Risco alto | Testar First Conversion ou revisar targeting |
+A interpretação do % incremental varia por negócio. Consulte [PLAYBOOK.md](PLAYBOOK.md) para thresholds específicos.
+
+**Conceito geral:**
+- **% alto**: Conversões realmente causadas pelo anúncio
+- **% baixo**: Possível canibalização de conversões orgânicas
 
 ### Fluxo de Diagnóstico Completo
 
@@ -359,8 +362,7 @@ Resultado:
 4. Identificar criativos eficientes
    └── Ordenar por CPA incremental (não CPA padrão)
 
-5. Recomendar ações
-   └── Se incremental < 20% → testar First Conversion
+5. Recomendar ações conforme thresholds do PLAYBOOK.md
 ```
 
 ## Guia: execute_api
@@ -503,7 +505,7 @@ Use os prompts do MCP para contexto adicional:
 
 "Qual é o CPA incremental dos meus anúncios?"
 → get_attribution_comparison(object_id: "{ad_id}", object_type: "ad")
-→ Mostra CPA por modelo: All (R$ 46), First (R$ 52), Incremental (R$ 307)
+→ Mostra CPA por modelo de atribuição (All, First, Incremental)
 ```
 
 ### Operações Avançadas
@@ -564,12 +566,12 @@ Use os prompts do MCP para contexto adicional:
 
 ### Erro: Orçamento Muito Baixo (subcódigo 1885272)
 
-**Causa**: Orçamento mínimo varia por país. No Brasil é R$ 5,33/dia.
+**Causa**: Orçamento mínimo varia por país e moeda.
 
-**Solução**: Use pelo menos 600 centavos (R$ 6,00) para garantir:
+**Solução**: Consulte [PLAYBOOK.md](PLAYBOOK.md) para valores específicos por localização. Exemplo:
 ```json
 {
-  "daily_budget": 600
+  "daily_budget": 600  // valor em centavos da moeda local
 }
 ```
 

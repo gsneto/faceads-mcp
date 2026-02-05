@@ -139,7 +139,7 @@ Params:
   - campaign_id: string
   - billing_event: IMPRESSIONS | LINK_CLICKS | etc.
   - optimization_goal: LINK_CLICKS | CONVERSIONS | etc.
-  - daily_budget: number (mínimo 533 centavos no Brasil)
+  - daily_budget: number (em centavos, mínimo varia por país)
   - status: PAUSED | ACTIVE
   - targeting: object
   - bid_strategy: LOWEST_COST_WITHOUT_CAP | COST_CAP | BID_CAP
@@ -344,7 +344,7 @@ Params:
 | First Conversion | Evitar contar mesmo usuário múltiplas vezes | CPA parece maior, mas é mais preciso para aquisição |
 | Incrementality | Quer saber impacto real dos anúncios | Número muito menor, pode assustar stakeholders |
 
-**Regra prática:** Se `incrementality < 30%` de `all_conversions`, há alto risco de estar pagando por conversões que aconteceriam organicamente.
+> **Nota:** Para thresholds específicos de % incremental e regras de ação, consulte [PLAYBOOK.md](PLAYBOOK.md).
 
 ---
 
@@ -364,9 +364,10 @@ Params:
 4. Identificar criativos eficientes
    └── Ordenar por CPA incremental (não CPA padrão)
 
-5. Recomendar ações
-   └── Se incremental < 20% do total → testar otimização First Conversion
+5. Recomendar ações conforme thresholds do PLAYBOOK.md
 ```
+
+> **Nota:** Para fluxos de diagnóstico detalhados com thresholds específicos, consulte [PLAYBOOK.md](PLAYBOOK.md).
 
 ---
 

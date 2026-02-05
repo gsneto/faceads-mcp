@@ -169,7 +169,7 @@ POST /{ad_account_id}/adsets
 
 > **IMPORTANTE**:
 > - O `bid_strategy` é **obrigatório**. Use `LOWEST_COST_WITHOUT_CAP` para lance automático ou `COST_CAP`/`BID_CAP` com `bid_amount`.
-> - Orçamento mínimo varia por país. No Brasil, o mínimo é **R$ 5,33/dia (533 centavos)**. Use pelo menos `600` para garantir.
+> - Orçamento mínimo varia por país e moeda. Consulte a documentação local ou use `GET /act_{id}?fields=min_daily_budget` para descobrir o valor mínimo da conta.
 
 ### Anúncios
 
@@ -366,7 +366,7 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 |-----------|----------|---------|
 | `4834011` | `is_adset_budget_sharing_enabled` ausente | Adicione o campo ao criar campanhas sem CBO |
 | `2490487` | Bid strategy/amount ausente | Adicione `bid_strategy` ao criar ad sets |
-| `1885272` | Orçamento muito baixo | Use pelo menos R$ 5,33 (533 centavos) no Brasil |
+| `1885272` | Orçamento muito baixo | Use orçamento acima do mínimo da conta (varia por país/moeda) |
 | `33` | Objeto não existe | Verifique se o ID está correto (use `me/adaccounts`) |
 | `2238281` | `instagram_actor_id` não aceito em object_story_spec | Use `instagram_user_id` dentro do object_story_spec |
 
