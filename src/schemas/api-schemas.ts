@@ -257,27 +257,59 @@ const datePresetSchema = z.enum([
   'last_year',
 ]);
 
+// Schema para janelas de atribuicao
+const attributionWindowsSchema = z.array(
+  z.enum([
+    '1d_click',     // 1 dia apos clique
+    '7d_click',     // 7 dias apos clique
+    '28d_click',    // 28 dias apos clique
+    '1d_view',      // 1 dia apos visualizacao
+    '7d_view',      // 7 dias apos visualizacao
+    '28d_view',     // 28 dias apos visualizacao
+    '1d_ev',        // 1 dia engaged view
+    'incrementality', // Atribuicao incremental (conversoes que nao teriam acontecido sem o anuncio)
+    'dda',          // Data-driven attribution
+  ])
+).describe(`Janelas de atribuicao para quebrar metricas de conversao.
+Cada action retorna com breakdown por janela:
+- value: total com atribuicao padrao
+- 1d_click: conversoes 1 dia apos clique
+- 7d_click: conversoes 7 dias apos clique
+- incrementality: conversoes incrementais (modelo causal da Meta)`);
+
 export const getAccountInsightsSchema = z.object({
   date_preset: datePresetSchema.optional().describe('Período predefinido'),
   time_range: timeRangeSchema.optional().describe('Intervalo de datas personalizado'),
   fields: z
     .array(z.string())
     .optional()
-    .describe('Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)'),
+    .describe('Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)'),
+  action_attribution_windows: attributionWindowsSchema.optional(),
+  use_unified_attribution_setting: z.boolean().optional().describe(
+    'Se false, permite especificar janelas de atribuicao manualmente. Default: true (usa config do ad set)'
+  ),
 });
 
 export const getCampaignInsightsSchema = z.object({
   campaign_id: z.string().min(1).describe('ID da campanha'),
   date_preset: datePresetSchema.optional().describe('Período predefinido'),
   time_range: timeRangeSchema.optional(),
-  fields: z.array(z.string()).optional(),
+  fields: z.array(z.string()).optional().describe('Métricas a retornar (inclua actions e cost_per_action_type para conversões)'),
+  action_attribution_windows: attributionWindowsSchema.optional(),
+  use_unified_attribution_setting: z.boolean().optional().describe(
+    'Se false, permite especificar janelas de atribuicao manualmente'
+  ),
 });
 
 export const getAdsetInsightsSchema = z.object({
   adset_id: z.string().min(1).describe('ID do ad set'),
-  date_preset: datePresetSchema.optional(),
+  date_preset: datePresetSchema.optional().describe('Período predefinido'),
   time_range: timeRangeSchema.optional(),
-  fields: z.array(z.string()).optional(),
+  fields: z.array(z.string()).optional().describe('Métricas a retornar (inclua actions e cost_per_action_type para conversões)'),
+  action_attribution_windows: attributionWindowsSchema.optional(),
+  use_unified_attribution_setting: z.boolean().optional().describe(
+    'Se false, permite especificar janelas de atribuicao manualmente'
+  ),
 });
 
 export const getAdInsightsSchema = z.object({
@@ -287,7 +319,23 @@ export const getAdInsightsSchema = z.object({
   fields: z
     .array(z.string())
     .optional()
-    .describe('Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)'),
+    .describe('Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)'),
+  action_attribution_windows: attributionWindowsSchema.optional(),
+  use_unified_attribution_setting: z.boolean().optional().describe(
+    'Se false, permite especificar janelas de atribuicao manualmente'
+  ),
+});
+
+export const getAttributionComparisonSchema = z.object({
+  object_id: z.string().min(1).describe('ID do objeto (ad, adset ou campaign)'),
+  object_type: z.enum(['ad', 'adset', 'campaign']).describe('Tipo do objeto'),
+  date_preset: datePresetSchema.optional().default('last_30d').describe('Período (default: last_30d)'),
+  time_range: timeRangeSchema.optional(),
+  actions: z
+    .array(z.string())
+    .optional()
+    .default(['purchase', 'lead', 'initiate_checkout'])
+    .describe('Tipos de conversao para comparar (default: purchase, lead, initiate_checkout)'),
 });
 
 // ==================== SCHEMAS DE AUDIÊNCIAS ====================
@@ -354,6 +402,7 @@ export type GetAccountInsightsArgs = z.infer<typeof getAccountInsightsSchema>;
 export type GetCampaignInsightsArgs = z.infer<typeof getCampaignInsightsSchema>;
 export type GetAdsetInsightsArgs = z.infer<typeof getAdsetInsightsSchema>;
 export type GetAdInsightsArgs = z.infer<typeof getAdInsightsSchema>;
+export type GetAttributionComparisonArgs = z.infer<typeof getAttributionComparisonSchema>;
 
 export type ListCustomAudiencesArgs = z.infer<typeof listCustomAudiencesSchema>;
 export type CreateCustomAudienceArgs = z.infer<typeof createCustomAudienceSchema>;
@@ -399,6 +448,7 @@ export const apiSchemas = {
   get_campaign_insights: getCampaignInsightsSchema,
   get_adset_insights: getAdsetInsightsSchema,
   get_ad_insights: getAdInsightsSchema,
+  get_attribution_comparison: getAttributionComparisonSchema,
   // Audiences
   list_custom_audiences: listCustomAudiencesSchema,
   create_custom_audience: createCustomAudienceSchema,

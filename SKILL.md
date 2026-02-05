@@ -7,8 +7,9 @@ Skill para transformar a IA em um gestor de tráfego profissional para a platafo
 Esta skill habilita a IA a atuar como um gestor de tráfego completo, capaz de:
 - Consultar documentação técnica da API de Marketing
 - Criar e gerenciar campanhas, ad sets e anúncios
-- Analisar métricas e performance
-- Sugerir otimizações baseadas em dados
+- Analisar métricas e performance com múltiplas janelas de atribuição
+- Comparar modelos de atribuição (All vs First vs Incremental)
+- Sugerir otimizações baseadas em dados reais de eficiência
 - Gerenciar audiências e targeting
 
 ## Pré-requisitos
@@ -50,6 +51,7 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 - Criar/editar/pausar/ativar campanhas
 - Gerenciar ad sets e anúncios
 - Obter insights e métricas
+- **Analisar atribuição e eficiência real** (incremental vs all conversions)
 - Gerenciar audiências customizadas
 - Estimar alcance de targeting
 
@@ -65,6 +67,13 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 | `get_error_code_info` | Info sobre código de erro |
 | `get_quick_reference` | Referência rápida |
 
+### Descoberta de Recursos
+| Tool | Descrição |
+|------|-----------|
+| `discover_ad_accounts` | **PRIMEIRA CHAMADA** - Descobre contas de anúncios do usuário |
+| `list_facebook_pages` | Lista páginas do Facebook (necessário para criativos) |
+| `get_instagram_account` | Obtém ID do Instagram vinculado à página |
+
 ### Campanhas
 | Tool | Descrição |
 |------|-----------|
@@ -79,21 +88,38 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 | Tool | Descrição |
 |------|-----------|
 | `list_adsets` | Listar ad sets |
+| `get_adset` | Detalhes de ad set |
 | `create_adset` | Criar ad set |
 | `update_adset` | Atualizar ad set |
+| `pause_adset` | Pausar ad set |
+| `activate_adset` | Ativar ad set |
 
-### Criativos e Anúncios
+### Anúncios
 | Tool | Descrição |
 |------|-----------|
+| `list_ads` | Listar todos os anúncios |
+| `list_campaign_ads` | Listar anúncios de uma campanha |
+| `get_ad` | Detalhes de anúncio |
 | `create_ad` | Criar anúncio |
+| `update_ad` | Atualizar anúncio |
+| `pause_ad` | Pausar anúncio |
+| `activate_ad` | Ativar anúncio |
+
+### Criativos
+| Tool | Descrição |
+|------|-----------|
+| `list_creatives` | Listar criativos da conta |
+| `get_creative` | Detalhes de um criativo |
 | `create_creative` | Criar criativo |
 
-### Insights
+### Insights e Atribuição
 | Tool | Descrição |
 |------|-----------|
-| `get_account_insights` | Métricas da conta |
-| `get_campaign_insights` | Métricas de campanha |
-| `get_adset_insights` | Métricas de ad set |
+| `get_account_insights` | Métricas da conta (suporta atribuição) |
+| `get_campaign_insights` | Métricas de campanha (suporta atribuição) |
+| `get_adset_insights` | Métricas de ad set (suporta atribuição) |
+| `get_ad_insights` | Métricas de anúncio (suporta atribuição) |
+| `get_attribution_comparison` | **NOVO** - Compara All vs First vs Incremental |
 
 ### Audiências
 | Tool | Descrição |
@@ -128,7 +154,18 @@ IA: [Usa list_campaigns para obter campanhas]
     [Analisa métricas e sugere otimizações]
 ```
 
-### 3. Criação de Campanha
+### 3. Análise de Atribuição (Eficiência Real)
+
+```
+Usuário: Quero saber se estou pagando por conversões orgânicas.
+
+IA: [Usa get_attribution_comparison com object_type: "campaign"]
+    [Compara All Conversions vs Incremental]
+    [Alerta se incremental < 30% (risco de pagar por orgânicas)]
+    [Sugere testar otimização First Conversion se aplicável]
+```
+
+### 4. Criação de Campanha
 
 ```
 Usuário: Crie uma campanha de tráfego para meu e-commerce.
@@ -138,7 +175,7 @@ IA: [Usa create_campaign com objetivo OUTCOME_TRAFFIC]
     [Sugere próximos passos: criar ad set e anúncio]
 ```
 
-### 4. Operações Avançadas (execute_api)
+### 5. Operações Avançadas (execute_api)
 
 Use `execute_api` para endpoints sem tool específica:
 
@@ -195,9 +232,13 @@ IA: [Usa execute_api com:
 
 ### Criar Estrutura Completa
 
+0. **Descoberta**: Validar conta e obter IDs necessários
+   - `discover_ad_accounts` → ID da conta
+   - `list_facebook_pages` → page_id para criativos
+   - `get_instagram_account` → instagram_user_id (se aplicável)
 1. **Campanha**: Definir objetivo e orçamento
 2. **Ad Set**: Definir público, posicionamento e lance
-3. **Creative**: Preparar mídia e textos
+3. **Creative**: Preparar mídia e textos (usar page_id)
 4. **Ad**: Associar creative ao ad set
 5. **Revisão**: Verificar configuração antes de ativar
 
@@ -215,6 +256,112 @@ IA: [Usa execute_api com:
 2. Pausar campanhas com CTR < 0.5%
 3. Aumentar orçamento de campanhas com ROAS > 2x
 4. Ajustar targeting baseado em breakdowns
+
+### Análise de Eficiência Real (Atribuição)
+
+1. Obter comparação de atribuição
+   - `get_attribution_comparison(object_id, object_type)`
+2. Calcular % incremental
+   - `incremental / all_conversions`
+3. Identificar alertas
+   - < 30% incremental = risco de pagar por conversões orgânicas
+4. Recomendar ações
+   - Testar First Conversion optimization
+   - Revisar targeting para público mais frio
+
+## Guia: Atribuição e Janelas de Conversão
+
+### Conceitos Fundamentais
+
+| Modelo | Descrição | Use quando... |
+|--------|-----------|---------------|
+| **All Conversions** | Conta todas as conversões (padrão) | Quer volume máximo reportado |
+| **First Conversion** | Conta apenas primeira conversão por usuário | Métricas de aquisição precisas |
+| **Incremental** | Conversões que não teriam acontecido sem o anúncio | Quer saber impacto real |
+
+### Janelas de Atribuição Disponíveis
+
+| Janela | Descrição |
+|--------|-----------|
+| `1d_click` | Conversões 1 dia após clique |
+| `7d_click` | Conversões 7 dias após clique |
+| `28d_click` | Conversões 28 dias após clique |
+| `1d_view` | Conversões 1 dia após visualização |
+| `7d_view` | Conversões 7 dias após visualização |
+| `incrementality` | Atribuição incremental (modelo causal) |
+| `dda` | Data-driven attribution |
+
+### Usando Janelas de Atribuição nas Tools
+
+Todas as tools de insights aceitam parâmetros de atribuição:
+
+```json
+{
+  "campaign_id": "123456789",
+  "date_preset": "last_30d",
+  "fields": ["spend", "actions", "cost_per_action_type"],
+  "action_attribution_windows": ["1d_click", "7d_click", "incrementality"],
+  "use_unified_attribution_setting": false
+}
+```
+
+**Resposta com breakdown:**
+```json
+{
+  "action_type": "purchase",
+  "value": "158",
+  "1d_click": "10",
+  "7d_click": "32",
+  "incrementality": "24"
+}
+```
+
+### Tool: get_attribution_comparison
+
+Compara automaticamente modelos de atribuição com formatação clara:
+
+```
+Usuário: Compare a atribuição da campanha 123456789
+
+IA: [Usa get_attribution_comparison]
+
+Resultado:
+| Modelo | Conversões | CPA |
+|--------|------------|-----|
+| All Conversions | 158 | R$ 46.58 |
+| 7d Click | 32 | R$ 229.99 |
+| Incremental | 24 | R$ 306.66 |
+
+% Incremental: 15.2% das conversões totais
+⚠️ ALERTA: Menos de 30% das conversões são incrementais!
+```
+
+### Regra Prática de Diagnóstico
+
+| % Incremental | Interpretação | Ação Recomendada |
+|---------------|---------------|------------------|
+| > 50% | Saudável | Manter estratégia |
+| 30-50% | Atenção | Considerar testar First Conversion |
+| < 30% | Risco alto | Testar First Conversion ou revisar targeting |
+
+### Fluxo de Diagnóstico Completo
+
+```
+1. Listar campanhas ativas
+   └── list_campaigns(status=ACTIVE)
+
+2. Analisar atribuição
+   └── get_attribution_comparison(object_id, object_type="campaign")
+
+3. Calcular eficiência real
+   └── incremental / all_conversions = % real
+
+4. Identificar criativos eficientes
+   └── Ordenar por CPA incremental (não CPA padrão)
+
+5. Recomendar ações
+   └── Se incremental < 20% → testar First Conversion
+```
 
 ## Guia: execute_api
 
@@ -345,13 +492,27 @@ Use os prompts do MCP para contexto adicional:
   4. Executa create_campaign
 ```
 
+### Análise de Atribuição
+```
+"Estou pagando por conversões orgânicas?"
+→ get_attribution_comparison(object_id: "{campaign_id}", object_type: "campaign")
+→ Compara All vs First vs Incremental automaticamente
+
+"Quero ver as conversões por janela de atribuição"
+→ get_ad_insights(ad_id: "{id}", action_attribution_windows: ["1d_click", "7d_click", "incrementality"])
+
+"Qual é o CPA incremental dos meus anúncios?"
+→ get_attribution_comparison(object_id: "{ad_id}", object_type: "ad")
+→ Mostra CPA por modelo: All (R$ 46), First (R$ 52), Incremental (R$ 307)
+```
+
 ### Operações Avançadas
 ```
 "Duplique minha campanha de vendas"
 → execute_api(method: "POST", endpoint: "{id}/copies", params: { deep_copy: true })
 
 "Liste os anúncios da campanha X"
-→ execute_api(method: "GET", endpoint: "{campaign_id}/ads", params: { fields: "id,name,status" })
+→ list_campaign_ads(campaign_id: "{campaign_id}")
 
 "Qual o delivery estimate do ad set Y?"
 → execute_api(method: "GET", endpoint: "{adset_id}/delivery_estimate")

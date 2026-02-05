@@ -525,6 +525,8 @@ export class MetaClient {
       time_range?: { since: string; until: string };
       level?: string;
       breakdowns?: string[];
+      action_attribution_windows?: string[];
+      use_unified_attribution_setting?: boolean;
     } = {}
   ): Promise<{ data: InsightsResult[] }> {
     const defaultFields = ['impressions', 'clicks', 'spend', 'reach', 'cpc', 'cpm', 'ctr'];
@@ -549,6 +551,16 @@ export class MetaClient {
       queryParams.breakdowns = params.breakdowns.join(',');
     }
 
+    // Suporte a janelas de atribuicao para quebrar conversoes
+    if (params.action_attribution_windows && params.action_attribution_windows.length > 0) {
+      queryParams.action_attribution_windows = JSON.stringify(params.action_attribution_windows);
+    }
+
+    // Controla se usa config de atribuicao do ad set ou permite override
+    if (params.use_unified_attribution_setting !== undefined) {
+      queryParams.use_unified_attribution_setting = String(params.use_unified_attribution_setting);
+    }
+
     return this.get<{ data: InsightsResult[] }>(`${objectId}/insights`, queryParams);
   }
 
@@ -560,6 +572,8 @@ export class MetaClient {
       fields?: string[];
       date_preset?: string;
       time_range?: { since: string; until: string };
+      action_attribution_windows?: string[];
+      use_unified_attribution_setting?: boolean;
     } = {}
   ): Promise<{ data: InsightsResult[] }> {
     return this.getInsights(this.config.adAccountId, params);

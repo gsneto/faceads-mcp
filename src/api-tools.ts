@@ -46,6 +46,7 @@ import {
   type GetCampaignInsightsArgs,
   type GetAdsetInsightsArgs,
   type GetAdInsightsArgs,
+  type GetAttributionComparisonArgs,
   // Audiências
   type ListCustomAudiencesArgs,
   type CreateCustomAudienceArgs,
@@ -485,8 +486,20 @@ export const apiTools = [
   // ==================== INSIGHTS ====================
   {
     name: 'get_account_insights',
-    description:
-      'Obtém métricas agregadas da conta de anúncios. Use date_preset (today, yesterday, last_7d, last_30d, this_month) ou time_range para período customizado. Métricas: impressions, clicks, spend, reach, cpc, cpm, ctr.',
+    description: `Obtém métricas agregadas da conta de anúncios.
+
+PARÂMETROS DE ATRIBUIÇÃO:
+- action_attribution_windows: Quebra conversões por janela (1d_click, 7d_click, 1d_view, incrementality)
+- use_unified_attribution_setting: false permite override das janelas
+
+EXEMPLO COM ATRIBUIÇÃO:
+fields: ["spend", "actions", "cost_per_action_type"]
+action_attribution_windows: ["1d_click", "7d_click", "incrementality"]
+
+INTERPRETAÇÃO:
+- value = total com atribuição padrão
+- 1d_click = conversões 1 dia após clique
+- incrementality = conversões incrementais (impacto real)`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -506,54 +519,127 @@ export const apiTools = [
         fields: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)',
+          description: 'Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)',
+        },
+        action_attribution_windows: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view', '28d_view', '1d_ev', 'incrementality', 'dda'],
+          },
+          description: 'Janelas de atribuição para quebrar métricas de conversão',
+        },
+        use_unified_attribution_setting: {
+          type: 'boolean',
+          description: 'Se false, permite especificar janelas manualmente (default: true)',
         },
       },
     },
   },
   {
     name: 'get_campaign_insights',
-    description: 'Obtém métricas de uma campanha específica. Requer API key configurada.',
+    description: `Obtém métricas de uma campanha específica.
+
+PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
+- action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
+- use_unified_attribution_setting: false - permite override das config do ad set
+
+DICA: Para análise de eficiência real, use get_attribution_comparison que já formata a comparação entre modelos.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         campaign_id: { type: 'string', description: 'ID da campanha' },
-        date_preset: { type: 'string', description: 'Período predefinido' },
+        date_preset: { 
+          type: 'string', 
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+          description: 'Período predefinido' 
+        },
         time_range: {
           type: 'object',
           properties: {
-            since: { type: 'string' },
-            until: { type: 'string' },
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
           },
         },
-        fields: { type: 'array', items: { type: 'string' } },
+        fields: { 
+          type: 'array', 
+          items: { type: 'string' },
+          description: 'Métricas (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)',
+        },
+        action_attribution_windows: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view', '28d_view', '1d_ev', 'incrementality', 'dda'],
+          },
+          description: 'Janelas de atribuição para quebrar métricas de conversão',
+        },
+        use_unified_attribution_setting: {
+          type: 'boolean',
+          description: 'Se false, permite especificar janelas manualmente',
+        },
       },
       required: ['campaign_id'],
     },
   },
   {
     name: 'get_adset_insights',
-    description: 'Obtém métricas de um conjunto de anúncios. Requer API key configurada.',
+    description: `Obtém métricas de um conjunto de anúncios.
+
+PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
+- action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
+- use_unified_attribution_setting: false - permite override das config do ad set
+
+DICA: Para análise de eficiência real, use get_attribution_comparison que já formata a comparação entre modelos.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         adset_id: { type: 'string', description: 'ID do ad set' },
-        date_preset: { type: 'string' },
+        date_preset: { 
+          type: 'string',
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+        },
         time_range: {
           type: 'object',
           properties: {
-            since: { type: 'string' },
-            until: { type: 'string' },
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
           },
         },
-        fields: { type: 'array', items: { type: 'string' } },
+        fields: { 
+          type: 'array', 
+          items: { type: 'string' },
+          description: 'Métricas (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)',
+        },
+        action_attribution_windows: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view', '28d_view', '1d_ev', 'incrementality', 'dda'],
+          },
+          description: 'Janelas de atribuição para quebrar métricas de conversão',
+        },
+        use_unified_attribution_setting: {
+          type: 'boolean',
+          description: 'Se false, permite especificar janelas manualmente',
+        },
       },
       required: ['adset_id'],
     },
   },
   {
     name: 'get_ad_insights',
-    description: 'Obtém métricas de um anúncio específico. Completa a hierarquia de insights (conta > campanha > adset > ad).',
+    description: `Obtém métricas de um anúncio específico. Completa a hierarquia de insights (conta > campanha > adset > ad).
+
+PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
+- action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
+- use_unified_attribution_setting: false - permite override das config do ad set
+
+EXEMPLO DE USO:
+fields: ["ad_name", "spend", "actions", "cost_per_action_type"]
+action_attribution_windows: ["1d_click", "7d_click", "1d_view", "incrementality"]
+
+DICA: Para comparação formatada entre modelos de atribuição, use get_attribution_comparison.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -574,10 +660,66 @@ export const apiTools = [
         fields: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)',
+          description: 'Métricas (impressions, clicks, spend, reach, cpc, cpm, ctr, actions, cost_per_action_type)',
+        },
+        action_attribution_windows: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view', '28d_view', '1d_ev', 'incrementality', 'dda'],
+          },
+          description: 'Janelas de atribuição para quebrar métricas de conversão',
+        },
+        use_unified_attribution_setting: {
+          type: 'boolean',
+          description: 'Se false, permite especificar janelas manualmente',
         },
       },
       required: ['ad_id'],
+    },
+  },
+  {
+    name: 'get_attribution_comparison',
+    description: `Compara métricas de conversão entre diferentes modelos de atribuição (All Conversions vs First Conversion vs Incremental).
+    
+QUANDO USAR:
+- Análise de eficiência real de anúncios/campanhas
+- Identificar se está pagando por conversões orgânicas
+- Comparar CPA entre modelos de atribuição
+
+INTERPRETAÇÃO:
+- Se incrementality < 30% do all_conversions → alto risco de pagar por conversões orgânicas
+- first_conversion é mais preciso para métricas de aquisição
+- CPA incremental mostra o custo real por conversão adicional`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        object_id: { type: 'string', description: 'ID do objeto (ad, adset ou campaign)' },
+        object_type: { 
+          type: 'string', 
+          enum: ['ad', 'adset', 'campaign'],
+          description: 'Tipo do objeto' 
+        },
+        date_preset: {
+          type: 'string',
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+          description: 'Período (default: last_30d)',
+        },
+        time_range: {
+          type: 'object',
+          properties: {
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
+          },
+          description: 'Intervalo de datas personalizado',
+        },
+        actions: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Tipos de conversão para comparar (default: purchase, lead, initiate_checkout)',
+        },
+      },
+      required: ['object_id', 'object_type'],
     },
   },
 
@@ -867,6 +1009,12 @@ export async function handleApiTool(
         const validation = validateArgs(apiSchemas.get_ad_insights, args);
         if (!validation.success) return formatValidationError(validation.error);
         return await handleGetAdInsights(client, validation.data);
+      }
+
+      case 'get_attribution_comparison': {
+        const validation = validateArgs(apiSchemas.get_attribution_comparison, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetAttributionComparison(client, validation.data);
       }
 
       // ==================== AUDIÊNCIAS ====================
@@ -1546,12 +1694,20 @@ async function handleGetAccountInsights(
     date_preset: args.date_preset,
     time_range: args.time_range,
     fields: args.fields,
+    action_attribution_windows: args.action_attribution_windows,
+    use_unified_attribution_setting: args.use_unified_attribution_setting,
   });
+  
+  const hasAttribution = args.action_attribution_windows && args.action_attribution_windows.length > 0;
+  const attributionNote = hasAttribution 
+    ? `\n\n**Janelas de Atribuição:** ${args.action_attribution_windows?.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Insights da Conta\n\n${formatInsights(result.data)}`,
+        text: `# Insights da Conta${attributionNote}\n\n${formatInsights(result.data, hasAttribution)}`,
       },
     ],
   };
@@ -1565,12 +1721,20 @@ async function handleGetCampaignInsights(
     date_preset: args.date_preset,
     time_range: args.time_range,
     fields: args.fields,
+    action_attribution_windows: args.action_attribution_windows,
+    use_unified_attribution_setting: args.use_unified_attribution_setting,
   });
+  
+  const hasAttribution = args.action_attribution_windows && args.action_attribution_windows.length > 0;
+  const attributionNote = hasAttribution 
+    ? `\n\n**Janelas de Atribuição:** ${args.action_attribution_windows?.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Insights da Campanha ${args.campaign_id}\n\n${formatInsights(result.data)}`,
+        text: `# Insights da Campanha ${args.campaign_id}${attributionNote}\n\n${formatInsights(result.data, hasAttribution)}`,
       },
     ],
   };
@@ -1584,12 +1748,20 @@ async function handleGetAdsetInsights(
     date_preset: args.date_preset,
     time_range: args.time_range,
     fields: args.fields,
+    action_attribution_windows: args.action_attribution_windows,
+    use_unified_attribution_setting: args.use_unified_attribution_setting,
   });
+  
+  const hasAttribution = args.action_attribution_windows && args.action_attribution_windows.length > 0;
+  const attributionNote = hasAttribution 
+    ? `\n\n**Janelas de Atribuição:** ${args.action_attribution_windows?.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Insights do Ad Set ${args.adset_id}\n\n${formatInsights(result.data)}`,
+        text: `# Insights do Ad Set ${args.adset_id}${attributionNote}\n\n${formatInsights(result.data, hasAttribution)}`,
       },
     ],
   };
@@ -1603,14 +1775,133 @@ async function handleGetAdInsights(
     date_preset: args.date_preset,
     time_range: args.time_range,
     fields: args.fields,
+    action_attribution_windows: args.action_attribution_windows,
+    use_unified_attribution_setting: args.use_unified_attribution_setting,
   });
+  
+  const hasAttribution = args.action_attribution_windows && args.action_attribution_windows.length > 0;
+  const attributionNote = hasAttribution 
+    ? `\n\n**Janelas de Atribuição:** ${args.action_attribution_windows?.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Insights do Anúncio ${args.ad_id}\n\n${formatInsights(result.data)}`,
+        text: `# Insights do Anúncio ${args.ad_id}${attributionNote}\n\n${formatInsights(result.data, hasAttribution)}`,
       },
     ],
+  };
+}
+
+async function handleGetAttributionComparison(
+  client: MetaClient,
+  args: GetAttributionComparisonArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Janelas para comparação completa
+  const attributionWindows = [
+    '1d_click',
+    '7d_click', 
+    '1d_view',
+    '7d_view',
+    'incrementality',
+  ];
+  
+  const actionsToTrack = args.actions || ['purchase', 'lead', 'initiate_checkout'];
+  
+  // Buscar insights com todas as janelas de atribuição
+  const result = await client.getInsights(args.object_id, {
+    date_preset: args.date_preset || 'last_30d',
+    time_range: args.time_range,
+    fields: ['spend', 'actions', 'cost_per_action_type'],
+    action_attribution_windows: attributionWindows,
+    use_unified_attribution_setting: false, // Permite override
+  });
+  
+  if (!result.data || result.data.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: `Nenhum dado de insights disponível para ${args.object_type} ${args.object_id}.`,
+      }],
+    };
+  }
+  
+  const data = result.data[0];
+  const spend = parseFloat(data.spend as string || '0');
+  const actions = (data.actions as Array<Record<string, unknown>>) || [];
+  const costs = (data.cost_per_action_type as Array<Record<string, unknown>>) || [];
+  
+  const lines: string[] = [
+    `# Comparação de Atribuição - ${args.object_type.toUpperCase()} ${args.object_id}`,
+    '',
+    `**Período:** ${data.date_start || args.date_preset || 'last_30d'} a ${data.date_stop || 'hoje'}`,
+    `**Gasto Total:** R$ ${spend.toFixed(2)}`,
+    '',
+    '## Análise por Tipo de Conversão',
+    '',
+  ];
+  
+  for (const actionType of actionsToTrack) {
+    const action = actions.find(a => a.action_type === actionType);
+    const costData = costs.find(c => c.action_type === actionType);
+    
+    if (action) {
+      const allConversions = parseFloat(action.value as string || '0');
+      const click1d = parseFloat(action['1d_click'] as string || '0');
+      const click7d = parseFloat(action['7d_click'] as string || '0');
+      const view1d = parseFloat(action['1d_view'] as string || '0');
+      const incremental = parseFloat(action['incrementality'] as string || '0');
+      
+      // Calcular CPAs
+      const cpaAll = allConversions > 0 ? spend / allConversions : 0;
+      const cpaIncremental = incremental > 0 ? spend / incremental : 0;
+      
+      // Calcular % incremental
+      const incrementalPct = allConversions > 0 ? (incremental / allConversions) * 100 : 0;
+      
+      // Alerta de risco
+      let riskAlert = '';
+      if (incrementalPct > 0 && incrementalPct < 30) {
+        riskAlert = '\n⚠️ **ALERTA:** Menos de 30% das conversões são incrementais - alto risco de pagar por conversões orgânicas!';
+      } else if (incrementalPct >= 30 && incrementalPct < 50) {
+        riskAlert = '\n⚡ **ATENÇÃO:** Entre 30-50% incrementais - considere testar otimização First Conversion';
+      }
+      
+      lines.push(`### ${actionType.toUpperCase()}`);
+      lines.push('');
+      lines.push('| Modelo | Conversões | CPA |');
+      lines.push('|--------|------------|-----|');
+      lines.push(`| All Conversions (padrão) | ${allConversions.toFixed(0)} | R$ ${cpaAll.toFixed(2)} |`);
+      lines.push(`| 1d Click | ${click1d.toFixed(0)} | ${click1d > 0 ? `R$ ${(spend / click1d).toFixed(2)}` : '-'} |`);
+      lines.push(`| 7d Click | ${click7d.toFixed(0)} | ${click7d > 0 ? `R$ ${(spend / click7d).toFixed(2)}` : '-'} |`);
+      lines.push(`| 1d View | ${view1d.toFixed(0)} | ${view1d > 0 ? `R$ ${(spend / view1d).toFixed(2)}` : '-'} |`);
+      lines.push(`| **Incremental** | **${incremental.toFixed(0)}** | **R$ ${cpaIncremental.toFixed(2)}** |`);
+      lines.push('');
+      lines.push(`**% Incremental:** ${incrementalPct.toFixed(1)}% das conversões totais`);
+      if (riskAlert) lines.push(riskAlert);
+      lines.push('');
+    }
+  }
+  
+  // Adicionar seção de interpretação
+  lines.push('---');
+  lines.push('');
+  lines.push('## Como Interpretar');
+  lines.push('');
+  lines.push('| Modelo | Use quando... | Cuidado com... |');
+  lines.push('|--------|---------------|----------------|');
+  lines.push('| All Conversions | Quer volume máximo reportado | Inflaciona métricas |');
+  lines.push('| First Conversion | Evitar contar mesmo usuário múltiplas vezes | CPA parece maior |');
+  lines.push('| Incrementality | Quer saber impacto real dos anúncios | Número muito menor |');
+  lines.push('');
+  lines.push('**Regra prática:** Se `incrementality < 30%` do total, considere testar otimização First Conversion no ad set.');
+  
+  return {
+    content: [{
+      type: 'text',
+      text: lines.join('\n'),
+    }],
   };
 }
 
@@ -1805,7 +2096,7 @@ ${a.creative ? `- **Creative ID:** ${(a.creative as { id?: string }).id || 'N/A'
     .join('\n');
 }
 
-function formatInsights(insights: Array<Record<string, unknown>>): string {
+function formatInsights(insights: Array<Record<string, unknown>>, hasAttribution: boolean = false): string {
   if (!insights || insights.length === 0) return 'Nenhum dado de insights disponível.';
 
   const data = insights[0];
@@ -1836,6 +2127,68 @@ function formatInsights(insights: Array<Record<string, unknown>>): string {
         value = parseInt(value as string).toLocaleString();
       }
       lines.push(`- **${label}:** ${value}`);
+    }
+  }
+
+  // Formatar actions com breakdown por janela de atribuição
+  if (data.actions && Array.isArray(data.actions)) {
+    lines.push('\n## Conversões (Actions)\n');
+    const actions = data.actions as Array<Record<string, unknown>>;
+    
+    for (const action of actions) {
+      const actionType = action.action_type as string;
+      const value = action.value as string;
+      
+      if (hasAttribution) {
+        // Mostrar breakdown por janela
+        lines.push(`### ${actionType}`);
+        lines.push(`- **Total:** ${value}`);
+        
+        // Janelas de clique
+        if (action['1d_click']) lines.push(`- **1d click:** ${action['1d_click']}`);
+        if (action['7d_click']) lines.push(`- **7d click:** ${action['7d_click']}`);
+        if (action['28d_click']) lines.push(`- **28d click:** ${action['28d_click']}`);
+        
+        // Janelas de view
+        if (action['1d_view']) lines.push(`- **1d view:** ${action['1d_view']}`);
+        if (action['7d_view']) lines.push(`- **7d view:** ${action['7d_view']}`);
+        
+        // Incremental
+        if (action['incrementality']) {
+          const incremental = parseFloat(action['incrementality'] as string);
+          const total = parseFloat(value);
+          const pct = total > 0 ? ((incremental / total) * 100).toFixed(1) : '0';
+          lines.push(`- **Incremental:** ${action['incrementality']} (${pct}% do total)`);
+        }
+        
+        lines.push('');
+      } else {
+        lines.push(`- **${actionType}:** ${value}`);
+      }
+    }
+  }
+
+  // Formatar cost_per_action_type
+  if (data.cost_per_action_type && Array.isArray(data.cost_per_action_type)) {
+    lines.push('\n## Custo por Conversão (CPA)\n');
+    const costs = data.cost_per_action_type as Array<Record<string, unknown>>;
+    
+    for (const cost of costs) {
+      const actionType = cost.action_type as string;
+      const value = parseFloat(cost.value as string);
+      
+      if (hasAttribution) {
+        lines.push(`### CPA - ${actionType}`);
+        lines.push(`- **CPA Total:** R$ ${value.toFixed(2)}`);
+        
+        if (cost['1d_click']) lines.push(`- **CPA 1d click:** R$ ${parseFloat(cost['1d_click'] as string).toFixed(2)}`);
+        if (cost['7d_click']) lines.push(`- **CPA 7d click:** R$ ${parseFloat(cost['7d_click'] as string).toFixed(2)}`);
+        if (cost['incrementality']) lines.push(`- **CPA Incremental:** R$ ${parseFloat(cost['incrementality'] as string).toFixed(2)}`);
+        
+        lines.push('');
+      } else {
+        lines.push(`- **CPA ${actionType}:** R$ ${value.toFixed(2)}`);
+      }
     }
   }
 

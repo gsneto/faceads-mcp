@@ -14,7 +14,8 @@ Este documento registra chamadas feitas via `execute_api` que podem se tornar to
 4. [Anúncios](#anúncios)
 5. [Criativos](#criativos)
 6. [Instagram](#instagram)
-7. [Candidatas a Tools](#candidatas-a-tools)
+7. [Atribuição e Janelas de Conversão](#atribuição-e-janelas-de-conversão)
+8. [Candidatas a Tools](#candidatas-a-tools)
 
 ---
 
@@ -273,6 +274,114 @@ Params:
 
 ---
 
+## Atribuição e Janelas de Conversão
+
+### Insights com Janelas de Atribuição
+
+**Uso**: Quebrar métricas de conversão por diferentes janelas de atribuição
+
+```
+Método: GET
+Endpoint: {ad_id}/insights (ou campaign_id, adset_id)
+Params:
+  - date_preset: last_30d
+  - fields: ad_name, spend, actions, cost_per_action_type
+  - action_attribution_windows: ["1d_click", "7d_click", "1d_view", "incrementality"]
+  - use_unified_attribution_setting: false (permite override)
+```
+
+**Resposta**: Cada action retorna com breakdown por janela:
+```json
+{
+  "action_type": "purchase",
+  "value": "158",        // total (default)
+  "1d_view": "126",      // view-through 1 dia
+  "1d_click": "10",      // clique 1 dia
+  "7d_click": "32",      // clique 7 dias
+  "incrementality": "24" // atribuição incremental
+}
+```
+
+**Frequência**: Alta (fundamental para análise de eficiência)
+
+---
+
+### Janelas de Atribuição Disponíveis
+
+| Janela | Descrição |
+|--------|-----------|
+| `1d_click` | Conversões 1 dia após clique |
+| `7d_click` | Conversões 7 dias após clique |
+| `28d_click` | Conversões 28 dias após clique |
+| `1d_view` | Conversões 1 dia após visualização (view-through) |
+| `7d_view` | Conversões 7 dias após visualização |
+| `28d_view` | Conversões 28 dias após visualização |
+| `1d_ev` | Engaged view 1 dia |
+| `incrementality` | Atribuição incremental (conversões causais) |
+| `dda` | Data-driven attribution |
+
+---
+
+### Campos para First vs All Conversions
+
+**Uso**: Comparar contagem única vs múltipla de conversões
+
+| Campo | Descrição |
+|-------|-----------|
+| `1d_click` | Padrão (all conversions) |
+| `1d_click_all_conversions` | Explícito - todas as conversões |
+| `1d_click_first_conversion` | Apenas primeira conversão por usuário |
+| `incrementality_first_conversion` | Incremental + first conversion |
+| `incrementality_all_conversions` | Incremental + all conversions |
+
+---
+
+### Interpretação de Negócio
+
+| Modelo | Use quando... | Cuidado com... |
+|--------|---------------|----------------|
+| All Conversions (padrão) | Quer volume máximo reportado | Inflaciona métricas, conta conversões duplicadas |
+| First Conversion | Evitar contar mesmo usuário múltiplas vezes | CPA parece maior, mas é mais preciso para aquisição |
+| Incrementality | Quer saber impacto real dos anúncios | Número muito menor, pode assustar stakeholders |
+
+**Regra prática:** Se `incrementality < 30%` de `all_conversions`, há alto risco de estar pagando por conversões que aconteceriam organicamente.
+
+---
+
+### Fluxo de Diagnóstico Recomendado
+
+```
+1. Listar campanhas ativas
+   └── list_campaigns(status=ACTIVE)
+
+2. Puxar insights com atribuição expandida
+   └── get_attribution_comparison(object_id, object_type="campaign")
+   └── OU get_ad_insights com action_attribution_windows
+
+3. Comparar modelos
+   └── Calcular: incremental / all_conversions = % real
+
+4. Identificar criativos eficientes
+   └── Ordenar por CPA incremental (não CPA padrão)
+
+5. Recomendar ações
+   └── Se incremental < 20% do total → testar otimização First Conversion
+```
+
+---
+
+### Tools Disponíveis
+
+| Tool | Descrição |
+|------|-----------|
+| `get_attribution_comparison` | Compara All vs First vs Incremental formatado |
+| `get_account_insights` | Aceita `action_attribution_windows` |
+| `get_campaign_insights` | Aceita `action_attribution_windows` |
+| `get_adset_insights` | Aceita `action_attribution_windows` |
+| `get_ad_insights` | Aceita `action_attribution_windows` |
+
+---
+
 ## Candidatas a Tools
 
 Com base na frequência e utilidade, estas chamadas são **candidatas prioritárias** para se tornarem tools dedicadas:
@@ -301,6 +410,8 @@ Com base na frequência e utilidade, estas chamadas são **candidatas prioritár
 | Data | Alteração |
 |------|-----------|
 | 2026-02-05 | Documento criado com base em sessão de testes do MCP |
+| 2026-02-05 | Adicionada seção completa sobre Atribuição e Janelas de Conversão |
+| 2026-02-05 | Criada tool `get_attribution_comparison` para análise comparativa |
 
 ---
 
