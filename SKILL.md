@@ -422,6 +422,30 @@ Use os prompts do MCP para contexto adicional:
 
 Ou omita o campo na lista de fields.
 
+### Erro: Instagram ID Depreciado (erro 12)
+
+**Causa**: O ID do Instagram mostrado na UI do Meta Ads (`5610...`) é o formato **antigo**, depreciado na v22.0+.
+
+**Solução**:
+1. Descubra o ID novo via API:
+```json
+GET /{page_id}?fields=instagram_business_account
+// Retorna: {"instagram_business_account": {"id": "17841457593597590"}}
+```
+
+2. Use `instagram_user_id` **dentro** do `object_story_spec`:
+```json
+{
+  "object_story_spec": {
+    "page_id": "123456789",
+    "instagram_user_id": "17841457593597590",  // ID novo!
+    "link_data": {...}
+  }
+}
+```
+
+**NÃO use**: `instagram_actor_id` (campo errado/depreciado)
+
 ## Troubleshooting: Duplicação de Campanhas
 
 ### Erros Comuns na Duplicação

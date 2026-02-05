@@ -53,6 +53,31 @@ Resposta:
 
 > **NUNCA** invente ou use IDs de exemplo da documentação. O ID correto está configurado em `META_AD_ACCOUNT_ID` ou pode ser descoberto via `me/adaccounts`.
 
+### Descobrir Páginas do Facebook
+
+```
+GET /me/accounts?fields=id,name,access_token
+```
+
+### Descobrir Conta do Instagram Vinculada
+
+**IMPORTANTE:** O ID do Instagram mostrado na UI do Meta Ads é o formato **antigo** (depreciado v22.0+). Use a API para obter o ID correto:
+
+```
+GET /{page_id}?fields=instagram_business_account,connected_instagram_account
+```
+
+Resposta:
+```json
+{
+  "instagram_business_account": {"id": "17841457593597590"},
+  "connected_instagram_account": {"id": "17841457593597590"},
+  "id": "104270431948334"
+}
+```
+
+Use o ID de `instagram_business_account` no campo `instagram_user_id` do criativo.
+
 ## Endpoints Principais
 
 ### Campanhas
@@ -175,6 +200,30 @@ POST /{ad_account_id}/ads
 | Listar | GET | `/{ad_account_id}/adcreatives` |
 | Criar | POST | `/{ad_account_id}/adcreatives` |
 
+**Exemplo - Criar criativo com conta do Instagram:**
+
+```json
+POST /{ad_account_id}/adcreatives
+{
+  "name": "Meu Criativo",
+  "object_story_spec": {
+    "page_id": "123456789",
+    "instagram_user_id": "17841457593597590",
+    "link_data": {
+      "link": "https://meusite.com",
+      "message": "Texto do anúncio",
+      "call_to_action": {"type": "LEARN_MORE"}
+    }
+  }
+}
+```
+
+> **IMPORTANTE - Conta do Instagram:**
+> 1. O campo correto é `instagram_user_id` **dentro** do `object_story_spec`
+> 2. NÃO use `instagram_actor_id` (depreciado na v22.0+)
+> 3. O ID mostrado na UI do Meta Ads é o formato **antigo** e não funciona
+> 4. Descubra o ID novo via: `GET /{page_id}?fields=instagram_business_account`
+
 ### Insights (Métricas)
 
 | Operação | Método | Endpoint |
@@ -296,6 +345,8 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | `bid_strategy` | AdSet | **Obrigatório** | Sempre incluir (`LOWEST_COST_WITHOUT_CAP`, `COST_CAP`, `BID_CAP`) |
 | `image_crops` (191x100) | Creative | **Depreciado** | Use apenas `100x100` ou omita para crop automático |
 | `standard_enhancements` | Creative | **Removido v22.0+** | Omitir ao criar criativos |
+| `instagram_actor_id` | Creative | **Depreciado v22.0+** | Use `instagram_user_id` dentro do `object_story_spec` |
+| Instagram ID antigo (5610...) | Creative | **Depreciado v22.0+** | Descubra o novo ID via `GET /{page_id}?fields=instagram_business_account` |
 
 ## Códigos de Erro Frequentes
 
@@ -317,6 +368,20 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | `2490487` | Bid strategy/amount ausente | Adicione `bid_strategy` ao criar ad sets |
 | `1885272` | Orçamento muito baixo | Use pelo menos R$ 5,33 (533 centavos) no Brasil |
 | `33` | Objeto não existe | Verifique se o ID está correto (use `me/adaccounts`) |
+| `2238281` | `instagram_actor_id` não aceito em object_story_spec | Use `instagram_user_id` dentro do object_story_spec |
+
+### Erros de Instagram em Criativos
+
+| Código | Problema | Solução |
+|--------|----------|---------|
+| `12` | "Old Instagram ID is deprecated for versions v22.0+" | O ID na UI do Meta Ads é formato antigo. Descubra o novo via `GET /{page_id}?fields=instagram_business_account` |
+| `100` | "instagram_actor_id must be a valid Instagram account id" | Use o ID novo do Instagram (formato 17841...) |
+| `100` (sub `2238281`) | "instagram_actor_id não é compatível com object_story_spec" | Use `instagram_user_id` **dentro** do `object_story_spec`, não `instagram_actor_id` |
+
+**Processo correto para criar criativo com Instagram:**
+1. Obtenha a página: `GET /me/accounts`
+2. Obtenha o ID do Instagram: `GET /{page_id}?fields=instagram_business_account`
+3. Use `instagram_user_id` dentro do `object_story_spec` (não `instagram_actor_id`)
 
 ## Erros Comuns no Endpoint /copies
 
