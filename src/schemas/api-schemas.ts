@@ -4,6 +4,30 @@
 
 import { z } from 'zod';
 
+// ==================== SCHEMAS DE DESCOBERTA ====================
+
+export const discoverAdAccountsSchema = z.object({
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, account_status, currency, timezone_name)'),
+});
+
+export const listFacebookPagesSchema = z.object({
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, access_token, category)'),
+});
+
+export const getInstagramAccountSchema = z.object({
+  page_id: z.string().min(1).describe('ID da página do Facebook'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: instagram_business_account, connected_instagram_account)'),
+});
+
 // ==================== SCHEMAS DE CAMPANHAS ====================
 
 export const listCampaignsSchema = z.object({
@@ -107,7 +131,46 @@ export const updateAdsetSchema = z.object({
   targeting: z.record(z.string(), z.unknown()).optional().describe('Nova especificação de targeting'),
 });
 
+export const getAdsetSchema = z.object({
+  adset_id: z.string().min(1).describe('ID do ad set'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting)'),
+});
+
+export const pauseAdsetSchema = z.object({
+  adset_id: z.string().min(1).describe('ID do ad set'),
+});
+
+export const activateAdsetSchema = z.object({
+  adset_id: z.string().min(1).describe('ID do ad set'),
+});
+
 // ==================== SCHEMAS DE ADS ====================
+
+export const listAdsSchema = z.object({
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, status, adset_id, effective_status)'),
+});
+
+export const listCampaignAdsSchema = z.object({
+  campaign_id: z.string().min(1).describe('ID da campanha'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, status, effective_status, adset_id, creative)'),
+});
+
+export const getAdSchema = z.object({
+  ad_id: z.string().min(1).describe('ID do anúncio'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, status, effective_status, adset_id, creative, created_time)'),
+});
 
 export const createAdSchema = z.object({
   name: z.string().min(1).describe('Nome do anúncio'),
@@ -116,11 +179,61 @@ export const createAdSchema = z.object({
   status: z.enum(['PAUSED', 'ACTIVE']).default('PAUSED').describe('Status inicial'),
 });
 
+export const updateAdSchema = z.object({
+  ad_id: z.string().min(1).describe('ID do anúncio'),
+  name: z.string().min(1).optional().describe('Novo nome'),
+  status: z.enum(['ACTIVE', 'PAUSED']).optional().describe('Novo status'),
+});
+
+export const pauseAdSchema = z.object({
+  ad_id: z.string().min(1).describe('ID do anúncio'),
+});
+
+export const activateAdSchema = z.object({
+  ad_id: z.string().min(1).describe('ID do anúncio'),
+});
+
 // ==================== SCHEMAS DE CRIATIVOS ====================
+
+export const listCreativesSchema = z.object({
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, object_story_spec, thumbnail_url)'),
+});
+
+export const getCreativeSchema = z.object({
+  creative_id: z.string().min(1).describe('ID do criativo'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, object_story_spec, thumbnail_url, effective_object_story_id)'),
+});
+
+// Schema detalhado para object_story_spec
+const linkDataSchema = z.object({
+  link: z.string().url().describe('URL de destino'),
+  message: z.string().optional().describe('Texto do post'),
+  name: z.string().optional().describe('Título do anúncio'),
+  description: z.string().optional().describe('Descrição'),
+  image_hash: z.string().optional().describe('Hash da imagem'),
+  call_to_action: z.object({
+    type: z.string().describe('Tipo do CTA (LEARN_MORE, SHOP_NOW, SIGN_UP, etc.)'),
+    value: z.record(z.string(), z.unknown()).optional(),
+  }).optional(),
+}).passthrough();
+
+const objectStorySpecSchema = z.object({
+  page_id: z.string().min(1).describe('ID da página do Facebook'),
+  instagram_user_id: z.string().optional().describe('ID do Instagram (obter via get_instagram_account)'),
+  link_data: linkDataSchema.optional(),
+  video_data: z.record(z.string(), z.unknown()).optional(),
+  photo_data: z.record(z.string(), z.unknown()).optional(),
+}).passthrough();
 
 export const createCreativeSchema = z.object({
   name: z.string().min(1).describe('Nome do criativo'),
-  object_story_spec: z.record(z.string(), z.unknown()).optional().describe('Especificação do criativo (link_data, video_data, etc.)'),
+  object_story_spec: objectStorySpecSchema.optional().describe('Especificação do criativo'),
 });
 
 // ==================== SCHEMAS DE INSIGHTS ====================
@@ -167,6 +280,16 @@ export const getAdsetInsightsSchema = z.object({
   fields: z.array(z.string()).optional(),
 });
 
+export const getAdInsightsSchema = z.object({
+  ad_id: z.string().min(1).describe('ID do anúncio'),
+  date_preset: datePresetSchema.optional().describe('Período predefinido'),
+  time_range: timeRangeSchema.optional().describe('Intervalo de datas personalizado'),
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)'),
+});
+
 // ==================== SCHEMAS DE AUDIÊNCIAS ====================
 
 export const listCustomAudiencesSchema = z.object({
@@ -195,6 +318,12 @@ export const executeApiSchema = z.object({
 
 // ==================== TYPES ====================
 
+// Descoberta
+export type DiscoverAdAccountsArgs = z.infer<typeof discoverAdAccountsSchema>;
+export type ListFacebookPagesArgs = z.infer<typeof listFacebookPagesSchema>;
+export type GetInstagramAccountArgs = z.infer<typeof getInstagramAccountSchema>;
+
+// Campanhas
 export type ListCampaignsArgs = z.infer<typeof listCampaignsSchema>;
 export type GetCampaignArgs = z.infer<typeof getCampaignSchema>;
 export type CreateCampaignArgs = z.infer<typeof createCampaignSchema>;
@@ -203,15 +332,28 @@ export type PauseCampaignArgs = z.infer<typeof pauseCampaignSchema>;
 export type ActivateCampaignArgs = z.infer<typeof activateCampaignSchema>;
 
 export type ListAdsetsArgs = z.infer<typeof listAdsetsSchema>;
+export type GetAdsetArgs = z.infer<typeof getAdsetSchema>;
 export type CreateAdsetArgs = z.infer<typeof createAdsetSchema>;
 export type UpdateAdsetArgs = z.infer<typeof updateAdsetSchema>;
+export type PauseAdsetArgs = z.infer<typeof pauseAdsetSchema>;
+export type ActivateAdsetArgs = z.infer<typeof activateAdsetSchema>;
 
+export type ListAdsArgs = z.infer<typeof listAdsSchema>;
+export type ListCampaignAdsArgs = z.infer<typeof listCampaignAdsSchema>;
+export type GetAdArgs = z.infer<typeof getAdSchema>;
 export type CreateAdArgs = z.infer<typeof createAdSchema>;
+export type UpdateAdArgs = z.infer<typeof updateAdSchema>;
+export type PauseAdArgs = z.infer<typeof pauseAdSchema>;
+export type ActivateAdArgs = z.infer<typeof activateAdSchema>;
+
+export type ListCreativesArgs = z.infer<typeof listCreativesSchema>;
+export type GetCreativeArgs = z.infer<typeof getCreativeSchema>;
 export type CreateCreativeArgs = z.infer<typeof createCreativeSchema>;
 
 export type GetAccountInsightsArgs = z.infer<typeof getAccountInsightsSchema>;
 export type GetCampaignInsightsArgs = z.infer<typeof getCampaignInsightsSchema>;
 export type GetAdsetInsightsArgs = z.infer<typeof getAdsetInsightsSchema>;
+export type GetAdInsightsArgs = z.infer<typeof getAdInsightsSchema>;
 
 export type ListCustomAudiencesArgs = z.infer<typeof listCustomAudiencesSchema>;
 export type CreateCustomAudienceArgs = z.infer<typeof createCustomAudienceSchema>;
@@ -222,6 +364,10 @@ export type ExecuteApiArgs = z.infer<typeof executeApiSchema>;
 // ==================== SCHEMA MAP ====================
 
 export const apiSchemas = {
+  // Descoberta
+  discover_ad_accounts: discoverAdAccountsSchema,
+  list_facebook_pages: listFacebookPagesSchema,
+  get_instagram_account: getInstagramAccountSchema,
   // Campaigns
   list_campaigns: listCampaignsSchema,
   get_campaign: getCampaignSchema,
@@ -231,16 +377,28 @@ export const apiSchemas = {
   activate_campaign: activateCampaignSchema,
   // Ad Sets
   list_adsets: listAdsetsSchema,
+  get_adset: getAdsetSchema,
   create_adset: createAdsetSchema,
   update_adset: updateAdsetSchema,
+  pause_adset: pauseAdsetSchema,
+  activate_adset: activateAdsetSchema,
   // Ads
+  list_ads: listAdsSchema,
+  list_campaign_ads: listCampaignAdsSchema,
+  get_ad: getAdSchema,
   create_ad: createAdSchema,
+  update_ad: updateAdSchema,
+  pause_ad: pauseAdSchema,
+  activate_ad: activateAdSchema,
   // Creatives
+  list_creatives: listCreativesSchema,
+  get_creative: getCreativeSchema,
   create_creative: createCreativeSchema,
   // Insights
   get_account_insights: getAccountInsightsSchema,
   get_campaign_insights: getCampaignInsightsSchema,
   get_adset_insights: getAdsetInsightsSchema,
+  get_ad_insights: getAdInsightsSchema,
   // Audiences
   list_custom_audiences: listCustomAudiencesSchema,
   create_custom_audience: createCustomAudienceSchema,

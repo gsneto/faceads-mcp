@@ -262,6 +262,43 @@ export class MetaClient {
     return data as { success: boolean };
   }
 
+  // ==================== DESCOBERTA DE RECURSOS ====================
+
+  /**
+   * Descobre contas de anúncios do usuário
+   * Deve ser a primeira chamada para obter o ID real da conta
+   */
+  async discoverAdAccounts(
+    fields: string[] = ['id', 'name', 'account_status', 'currency', 'timezone_name']
+  ): Promise<{ data: Array<{ id: string; name: string; account_status: number; [key: string]: unknown }> }> {
+    return this.get('me/adaccounts', { fields: fields.join(',') });
+  }
+
+  /**
+   * Lista páginas do Facebook do usuário
+   * Necessário para obter page_id para criar criativos
+   */
+  async listFacebookPages(
+    fields: string[] = ['id', 'name', 'access_token', 'category']
+  ): Promise<{ data: Array<{ id: string; name: string; access_token?: string; [key: string]: unknown }> }> {
+    return this.get('me/accounts', { fields: fields.join(',') });
+  }
+
+  /**
+   * Obtém conta do Instagram vinculada a uma página
+   * Retorna o ID correto do Instagram (formato novo) para usar em criativos
+   */
+  async getInstagramAccount(
+    pageId: string,
+    fields: string[] = ['instagram_business_account', 'connected_instagram_account']
+  ): Promise<{
+    id: string;
+    instagram_business_account?: { id: string };
+    connected_instagram_account?: { id: string };
+  }> {
+    return this.get(pageId, { fields: fields.join(',') });
+  }
+
   // ==================== CAMPANHAS ====================
 
   /**
@@ -277,10 +314,11 @@ export class MetaClient {
 
   /**
    * Obtém uma campanha específica
+   * Inclui campos de orçamento por default para verificar se é CBO
    */
   async getCampaign(
     campaignId: string,
-    fields: string[] = ['id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget']
+    fields: string[] = ['id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget', 'budget_remaining', 'created_time', 'updated_time']
   ): Promise<Campaign> {
     return this.get<Campaign>(campaignId, { fields: fields.join(',') });
   }
@@ -388,10 +426,32 @@ export class MetaClient {
   /**
    * Lista anúncios da conta
    */
-  async listAds(fields: string[] = ['id', 'name', 'status', 'adset_id']): Promise<{ data: Ad[] }> {
+  async listAds(fields: string[] = ['id', 'name', 'status', 'adset_id', 'effective_status']): Promise<{ data: Ad[] }> {
     return this.get<{ data: Ad[] }>(`${this.config.adAccountId}/ads`, {
       fields: fields.join(','),
     });
+  }
+
+  /**
+   * Lista anúncios de uma campanha específica
+   */
+  async listCampaignAds(
+    campaignId: string,
+    fields: string[] = ['id', 'name', 'status', 'effective_status', 'adset_id', 'creative']
+  ): Promise<{ data: Ad[] }> {
+    return this.get<{ data: Ad[] }>(`${campaignId}/ads`, {
+      fields: fields.join(','),
+    });
+  }
+
+  /**
+   * Obtém um anúncio específico
+   */
+  async getAd(
+    adId: string,
+    fields: string[] = ['id', 'name', 'status', 'effective_status', 'adset_id', 'creative', 'created_time']
+  ): Promise<Ad> {
+    return this.get<Ad>(adId, { fields: fields.join(',') });
   }
 
   /**
@@ -424,10 +484,20 @@ export class MetaClient {
   /**
    * Lista criativos da conta
    */
-  async listCreatives(fields: string[] = ['id', 'name', 'object_story_spec']): Promise<{ data: AdCreative[] }> {
+  async listCreatives(fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url']): Promise<{ data: AdCreative[] }> {
     return this.get<{ data: AdCreative[] }>(`${this.config.adAccountId}/adcreatives`, {
       fields: fields.join(','),
     });
+  }
+
+  /**
+   * Obtém um criativo específico
+   */
+  async getCreative(
+    creativeId: string,
+    fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url', 'effective_object_story_id']
+  ): Promise<AdCreative> {
+    return this.get<AdCreative>(creativeId, { fields: fields.join(',') });
   }
 
   /**

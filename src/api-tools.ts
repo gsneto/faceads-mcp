@@ -11,23 +11,46 @@ import {
   apiSchemas,
   validateArgs,
   formatValidationError,
+  // Descoberta
+  type DiscoverAdAccountsArgs,
+  type ListFacebookPagesArgs,
+  type GetInstagramAccountArgs,
+  // Campanhas
   type CreateCampaignArgs,
   type UpdateCampaignArgs,
   type GetCampaignArgs,
   type ListCampaignsArgs,
   type PauseCampaignArgs,
   type ActivateCampaignArgs,
+  // Ad Sets
   type ListAdsetsArgs,
+  type GetAdsetArgs,
   type CreateAdsetArgs,
   type UpdateAdsetArgs,
+  type PauseAdsetArgs,
+  type ActivateAdsetArgs,
+  // Ads
+  type ListAdsArgs,
+  type ListCampaignAdsArgs,
+  type GetAdArgs,
   type CreateAdArgs,
+  type UpdateAdArgs,
+  type PauseAdArgs,
+  type ActivateAdArgs,
+  // Criativos
+  type ListCreativesArgs,
+  type GetCreativeArgs,
   type CreateCreativeArgs,
+  // Insights
   type GetAccountInsightsArgs,
   type GetCampaignInsightsArgs,
   type GetAdsetInsightsArgs,
+  type GetAdInsightsArgs,
+  // Audiências
   type ListCustomAudiencesArgs,
   type CreateCustomAudienceArgs,
   type GetReachEstimateArgs,
+  // API Customizada
   type ExecuteApiArgs,
 } from './schemas/index.js';
 
@@ -35,6 +58,55 @@ import {
  * Define as tools de execução (API Meta) com JSON Schema manual
  */
 export const apiTools = [
+  // ==================== DESCOBERTA DE RECURSOS ====================
+  {
+    name: 'discover_ad_accounts',
+    description:
+      'Descobre as contas de anúncios do usuário. DEVE ser a primeira chamada de qualquer sessão para obter o ID real da conta (act_XXXXX). Evita erros de ID inventado.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, account_status, currency, timezone_name)',
+        },
+      },
+    },
+  },
+  {
+    name: 'list_facebook_pages',
+    description:
+      'Lista as páginas do Facebook do usuário. Necessário para obter o page_id usado na criação de criativos. Retorna também o access_token da página se necessário.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, access_token, category)',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_instagram_account',
+    description:
+      'Obtém a conta do Instagram vinculada a uma página do Facebook. Retorna o ID correto do Instagram (formato novo, não o da UI do Meta Ads) para usar no campo instagram_user_id ao criar criativos.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        page_id: { type: 'string', description: 'ID da página do Facebook' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: instagram_business_account, connected_instagram_account)',
+        },
+      },
+      required: ['page_id'],
+    },
+  },
+
   // ==================== CAMPANHAS ====================
   {
     name: 'list_campaigns',
@@ -52,12 +124,16 @@ export const apiTools = [
   },
   {
     name: 'get_campaign',
-    description: 'Obtém detalhes de uma campanha específica. Requer API key configurada.',
+    description: 'Obtém detalhes de uma campanha específica, incluindo informações de orçamento para verificar se é CBO (Campaign Budget Optimization). Campos padrão: id, name, status, objective, daily_budget, lifetime_budget, budget_remaining.',
     inputSchema: {
       type: 'object' as const,
       properties: {
         campaign_id: { type: 'string', description: 'ID da campanha' },
-        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default inclui campos de orçamento para identificar CBO)',
+        },
       },
       required: ['campaign_id'],
     },
@@ -139,6 +215,22 @@ export const apiTools = [
     },
   },
   {
+    name: 'get_adset',
+    description: 'Obtém detalhes de um conjunto de anúncios específico, incluindo targeting e orçamento.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        adset_id: { type: 'string', description: 'ID do ad set' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting)',
+        },
+      },
+      required: ['adset_id'],
+    },
+  },
+  {
     name: 'create_adset',
     description: 'Cria um novo conjunto de anúncios. O bid_strategy é incluído automaticamente como LOWEST_COST_WITHOUT_CAP. Orçamento mínimo no Brasil: R$5,33 (533 centavos). Use pelo menos 600 centavos para garantir.',
     inputSchema: {
@@ -184,8 +276,76 @@ export const apiTools = [
       required: ['adset_id'],
     },
   },
+  {
+    name: 'pause_adset',
+    description: 'Pausa um conjunto de anúncios. Atalho para update_adset com status PAUSED.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        adset_id: { type: 'string', description: 'ID do ad set' },
+      },
+      required: ['adset_id'],
+    },
+  },
+  {
+    name: 'activate_adset',
+    description: 'Ativa um conjunto de anúncios pausado. Atalho para update_adset com status ACTIVE.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        adset_id: { type: 'string', description: 'ID do ad set' },
+      },
+      required: ['adset_id'],
+    },
+  },
 
   // ==================== ADS ====================
+  {
+    name: 'list_ads',
+    description: 'Lista todos os anúncios da conta de anúncios.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, status, adset_id, effective_status)',
+        },
+      },
+    },
+  },
+  {
+    name: 'list_campaign_ads',
+    description: 'Lista todos os anúncios de uma campanha específica. Muito útil para análise de performance por campanha.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        campaign_id: { type: 'string', description: 'ID da campanha' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, status, effective_status, adset_id, creative)',
+        },
+      },
+      required: ['campaign_id'],
+    },
+  },
+  {
+    name: 'get_ad',
+    description: 'Obtém detalhes de um anúncio específico, incluindo effective_status para ver o status real de entrega.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        ad_id: { type: 'string', description: 'ID do anúncio' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, status, effective_status, adset_id, creative, created_time)',
+        },
+      },
+      required: ['ad_id'],
+    },
+  },
   {
     name: 'create_ad',
     description: 'Cria um novo anúncio. Requer API key configurada.',
@@ -200,16 +360,123 @@ export const apiTools = [
       required: ['name', 'adset_id', 'creative_id'],
     },
   },
+  {
+    name: 'update_ad',
+    description: 'Atualiza um anúncio existente. Use para alterar nome ou status (ACTIVE/PAUSED).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        ad_id: { type: 'string', description: 'ID do anúncio' },
+        name: { type: 'string', description: 'Novo nome' },
+        status: { type: 'string', enum: ['ACTIVE', 'PAUSED'], description: 'Novo status' },
+      },
+      required: ['ad_id'],
+    },
+  },
+  {
+    name: 'pause_ad',
+    description: 'Pausa um anúncio. Atalho para update_ad com status PAUSED.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        ad_id: { type: 'string', description: 'ID do anúncio' },
+      },
+      required: ['ad_id'],
+    },
+  },
+  {
+    name: 'activate_ad',
+    description: 'Ativa um anúncio pausado. Atalho para update_ad com status ACTIVE.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        ad_id: { type: 'string', description: 'ID do anúncio' },
+      },
+      required: ['ad_id'],
+    },
+  },
 
   // ==================== CRIATIVOS ====================
   {
+    name: 'list_creatives',
+    description: 'Lista todos os criativos da conta de anúncios.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, object_story_spec, thumbnail_url)',
+        },
+      },
+    },
+  },
+  {
+    name: 'get_creative',
+    description: 'Obtém detalhes de um criativo específico.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        creative_id: { type: 'string', description: 'ID do criativo' },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, object_story_spec, thumbnail_url, effective_object_story_id)',
+        },
+      },
+      required: ['creative_id'],
+    },
+  },
+  {
     name: 'create_creative',
-    description: 'Cria um novo criativo. Requer API key configurada.',
+    description: `Cria um novo criativo para anúncios.
+
+**Estrutura do object_story_spec para Link Ad:**
+\`\`\`json
+{
+  "page_id": "ID_DA_PAGINA",
+  "instagram_user_id": "ID_DO_INSTAGRAM (opcional, use get_instagram_account)",
+  "link_data": {
+    "link": "https://seu-site.com",
+    "message": "Texto do post",
+    "name": "Título do anúncio",
+    "description": "Descrição",
+    "call_to_action": { "type": "LEARN_MORE" }
+  }
+}
+\`\`\`
+
+**CTAs disponíveis:** LEARN_MORE, SHOP_NOW, SIGN_UP, BOOK_TRAVEL, CONTACT_US, DOWNLOAD, GET_QUOTE, APPLY_NOW, SUBSCRIBE, WATCH_MORE
+
+**Dica:** Use list_facebook_pages para obter page_id e get_instagram_account para obter instagram_user_id.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Nome do criativo' },
-        object_story_spec: { type: 'object', description: 'Especificação do criativo (link_data, video_data, etc.)' },
+        object_story_spec: {
+          type: 'object',
+          description: 'Especificação do criativo. Deve conter page_id e link_data (ou video_data, photo_data)',
+          properties: {
+            page_id: { type: 'string', description: 'ID da página do Facebook' },
+            instagram_user_id: { type: 'string', description: 'ID do Instagram (obter via get_instagram_account)' },
+            link_data: {
+              type: 'object',
+              description: 'Dados do link para anúncio',
+              properties: {
+                link: { type: 'string', description: 'URL de destino' },
+                message: { type: 'string', description: 'Texto do post' },
+                name: { type: 'string', description: 'Título do anúncio' },
+                description: { type: 'string', description: 'Descrição' },
+                call_to_action: {
+                  type: 'object',
+                  properties: {
+                    type: { type: 'string', description: 'Tipo do CTA (LEARN_MORE, SHOP_NOW, etc.)' },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
       required: ['name'],
     },
@@ -282,6 +549,35 @@ export const apiTools = [
         fields: { type: 'array', items: { type: 'string' } },
       },
       required: ['adset_id'],
+    },
+  },
+  {
+    name: 'get_ad_insights',
+    description: 'Obtém métricas de um anúncio específico. Completa a hierarquia de insights (conta > campanha > adset > ad).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        ad_id: { type: 'string', description: 'ID do anúncio' },
+        date_preset: {
+          type: 'string',
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+          description: 'Período predefinido',
+        },
+        time_range: {
+          type: 'object',
+          properties: {
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
+          },
+          description: 'Intervalo de datas personalizado',
+        },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Métricas a retornar (impressions, clicks, spend, reach, cpc, cpm, ctr)',
+        },
+      },
+      required: ['ad_id'],
     },
   },
 
@@ -393,6 +689,25 @@ export async function handleApiTool(
     const client = requireApiConfig();
 
     switch (name) {
+      // ==================== DESCOBERTA DE RECURSOS ====================
+      case 'discover_ad_accounts': {
+        const validation = validateArgs(apiSchemas.discover_ad_accounts, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleDiscoverAdAccounts(client, validation.data);
+      }
+
+      case 'list_facebook_pages': {
+        const validation = validateArgs(apiSchemas.list_facebook_pages, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListFacebookPages(client, validation.data);
+      }
+
+      case 'get_instagram_account': {
+        const validation = validateArgs(apiSchemas.get_instagram_account, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetInstagramAccount(client, validation.data);
+      }
+
       // ==================== CAMPANHAS ====================
       case 'list_campaigns': {
         const validation = validateArgs(apiSchemas.list_campaigns, args);
@@ -437,6 +752,12 @@ export async function handleApiTool(
         return await handleListAdsets(client, validation.data);
       }
 
+      case 'get_adset': {
+        const validation = validateArgs(apiSchemas.get_adset, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetAdset(client, validation.data);
+      }
+
       case 'create_adset': {
         const validation = validateArgs(apiSchemas.create_adset, args);
         if (!validation.success) return formatValidationError(validation.error);
@@ -449,14 +770,74 @@ export async function handleApiTool(
         return await handleUpdateAdset(client, validation.data);
       }
 
+      case 'pause_adset': {
+        const validation = validateArgs(apiSchemas.pause_adset, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handlePauseAdset(client, validation.data);
+      }
+
+      case 'activate_adset': {
+        const validation = validateArgs(apiSchemas.activate_adset, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleActivateAdset(client, validation.data);
+      }
+
       // ==================== ADS ====================
+      case 'list_ads': {
+        const validation = validateArgs(apiSchemas.list_ads, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListAds(client, validation.data);
+      }
+
+      case 'list_campaign_ads': {
+        const validation = validateArgs(apiSchemas.list_campaign_ads, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListCampaignAds(client, validation.data);
+      }
+
+      case 'get_ad': {
+        const validation = validateArgs(apiSchemas.get_ad, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetAd(client, validation.data);
+      }
+
       case 'create_ad': {
         const validation = validateArgs(apiSchemas.create_ad, args);
         if (!validation.success) return formatValidationError(validation.error);
         return await handleCreateAd(client, validation.data);
       }
 
+      case 'update_ad': {
+        const validation = validateArgs(apiSchemas.update_ad, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleUpdateAd(client, validation.data);
+      }
+
+      case 'pause_ad': {
+        const validation = validateArgs(apiSchemas.pause_ad, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handlePauseAd(client, validation.data);
+      }
+
+      case 'activate_ad': {
+        const validation = validateArgs(apiSchemas.activate_ad, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleActivateAd(client, validation.data);
+      }
+
       // ==================== CRIATIVOS ====================
+      case 'list_creatives': {
+        const validation = validateArgs(apiSchemas.list_creatives, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListCreatives(client, validation.data);
+      }
+
+      case 'get_creative': {
+        const validation = validateArgs(apiSchemas.get_creative, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetCreative(client, validation.data);
+      }
+
       case 'create_creative': {
         const validation = validateArgs(apiSchemas.create_creative, args);
         if (!validation.success) return formatValidationError(validation.error);
@@ -480,6 +861,12 @@ export async function handleApiTool(
         const validation = validateArgs(apiSchemas.get_adset_insights, args);
         if (!validation.success) return formatValidationError(validation.error);
         return await handleGetAdsetInsights(client, validation.data);
+      }
+
+      case 'get_ad_insights': {
+        const validation = validateArgs(apiSchemas.get_ad_insights, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetAdInsights(client, validation.data);
       }
 
       // ==================== AUDIÊNCIAS ====================
@@ -560,6 +947,122 @@ ${JSON.stringify(error, null, 2)}
   }
 }
 
+// ==================== DISCOVERY HANDLERS ====================
+
+async function handleDiscoverAdAccounts(
+  client: MetaClient,
+  args: DiscoverAdAccountsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.discoverAdAccounts(args.fields);
+  
+  const accountsText = result.data.length > 0
+    ? result.data.map(acc => {
+        const statusMap: Record<number, string> = {
+          1: 'ACTIVE',
+          2: 'DISABLED',
+          3: 'UNSETTLED',
+          7: 'PENDING_RISK_REVIEW',
+          8: 'PENDING_SETTLEMENT',
+          9: 'IN_GRACE_PERIOD',
+          100: 'PENDING_CLOSURE',
+          101: 'CLOSED',
+          201: 'ANY_ACTIVE',
+          202: 'ANY_CLOSED',
+        };
+        const status = statusMap[acc.account_status] || `UNKNOWN (${acc.account_status})`;
+        return `### ${acc.name}
+- **ID:** ${acc.id}
+- **Status:** ${status}
+${acc.currency ? `- **Moeda:** ${acc.currency}` : ''}
+${acc.timezone_name ? `- **Timezone:** ${acc.timezone_name}` : ''}`;
+      }).join('\n\n')
+    : 'Nenhuma conta de anúncios encontrada.';
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Contas de Anúncios\n\nEncontradas ${result.data.length} conta(s):\n\n${accountsText}`,
+      },
+    ],
+  };
+}
+
+async function handleListFacebookPages(
+  client: MetaClient,
+  args: ListFacebookPagesArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listFacebookPages(args.fields);
+  
+  const pagesText = result.data.length > 0
+    ? result.data.map(page => `### ${page.name}
+- **ID:** ${page.id}
+${page.category ? `- **Categoria:** ${page.category}` : ''}
+${page.access_token ? `- **Access Token:** (disponível)` : ''}`
+      ).join('\n\n')
+    : 'Nenhuma página encontrada.';
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Páginas do Facebook\n\nEncontradas ${result.data.length} página(s):\n\n${pagesText}\n\n**Dica:** Use o ID da página para criar criativos ou obter a conta do Instagram vinculada.`,
+      },
+    ],
+  };
+}
+
+async function handleGetInstagramAccount(
+  client: MetaClient,
+  args: GetInstagramAccountArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.getInstagramAccount(args.page_id, args.fields);
+  
+  const igBusinessId = result.instagram_business_account?.id;
+  const igConnectedId = result.connected_instagram_account?.id;
+  const igId = igBusinessId || igConnectedId;
+  
+  let text: string;
+  if (igId) {
+    text = `# Conta do Instagram
+
+**Page ID:** ${result.id}
+**Instagram ID:** ${igId}
+${igBusinessId ? `- Tipo: Business Account` : ''}
+${igConnectedId && !igBusinessId ? `- Tipo: Connected Account` : ''}
+
+**Como usar:**
+Ao criar um criativo, use este ID no campo \`instagram_user_id\` dentro de \`object_story_spec\`:
+
+\`\`\`json
+{
+  "object_story_spec": {
+    "page_id": "${result.id}",
+    "instagram_user_id": "${igId}",
+    "link_data": { ... }
+  }
+}
+\`\`\`
+
+**Importante:** NÃO use o ID que aparece na UI do Meta Ads (formato antigo, depreciado na v22.0+).`;
+  } else {
+    text = `# Conta do Instagram
+
+**Page ID:** ${result.id}
+
+⚠️ Nenhuma conta do Instagram vinculada a esta página.
+
+Para vincular uma conta do Instagram:
+1. Acesse as configurações da página no Facebook
+2. Vá em "Contas vinculadas" > "Instagram"
+3. Conecte a conta do Instagram Business`;
+  }
+
+  return {
+    content: [{ type: 'text', text }],
+  };
+}
+
 // ==================== CAMPAIGN HANDLERS ====================
 
 async function handleListCampaigns(
@@ -582,11 +1085,39 @@ async function handleGetCampaign(
   args: GetCampaignArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const campaign = await client.getCampaign(args.campaign_id, args.fields);
+  
+  // Determinar se é CBO baseado na presença de orçamento na campanha
+  const isCBO = !!(campaign.daily_budget || campaign.lifetime_budget);
+  const budgetType = isCBO ? 'CBO (Campaign Budget Optimization)' : 'ABO (Ad Set Budget Optimization)';
+  
+  let budgetInfo = '';
+  if (campaign.daily_budget) {
+    budgetInfo = `\n**Orçamento Diário:** R$ ${(parseInt(campaign.daily_budget) / 100).toFixed(2)}`;
+  }
+  if (campaign.lifetime_budget) {
+    budgetInfo += `\n**Orçamento Vitalício:** R$ ${(parseInt(campaign.lifetime_budget) / 100).toFixed(2)}`;
+  }
+  if (campaign.budget_remaining) {
+    budgetInfo += `\n**Orçamento Restante:** R$ ${(parseFloat(campaign.budget_remaining as string) / 100).toFixed(2)}`;
+  }
+
   return {
     content: [
       {
         type: 'text',
-        text: `# Campanha: ${campaign.name}\n\n${formatObject(campaign)}`,
+        text: `# Campanha: ${campaign.name}
+
+**ID:** ${campaign.id}
+**Status:** ${campaign.status}
+**Objetivo:** ${campaign.objective || 'N/A'}
+**Tipo de Orçamento:** ${budgetType}${budgetInfo}
+${campaign.created_time ? `**Criada em:** ${campaign.created_time}` : ''}
+${campaign.updated_time ? `**Atualizada em:** ${campaign.updated_time}` : ''}
+
+---
+
+**Dados completos:**
+${formatObject(campaign)}`,
       },
     ],
   };
@@ -683,6 +1214,21 @@ async function handleListAdsets(
   };
 }
 
+async function handleGetAdset(
+  client: MetaClient,
+  args: GetAdsetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const adset = await client.getAdSet(args.adset_id, args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Ad Set: ${adset.name}\n\n${formatObject(adset)}`,
+      },
+    ],
+  };
+}
+
 async function handleCreateAdset(
   client: MetaClient,
   args: CreateAdsetArgs
@@ -743,7 +1289,82 @@ async function handleUpdateAdset(
   };
 }
 
+async function handlePauseAdset(
+  client: MetaClient,
+  args: PauseAdsetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateAdSet(args.adset_id, { status: 'PAUSED' });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Ad Set Pausado\n\n**ID:** ${args.adset_id}\n\nO ad set foi pausado com sucesso.`,
+      },
+    ],
+  };
+}
+
+async function handleActivateAdset(
+  client: MetaClient,
+  args: ActivateAdsetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateAdSet(args.adset_id, { status: 'ACTIVE' });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Ad Set Ativado\n\n**ID:** ${args.adset_id}\n\nO ad set foi ativado com sucesso.`,
+      },
+    ],
+  };
+}
+
 // ==================== AD HANDLERS ====================
+
+async function handleListAds(
+  client: MetaClient,
+  args: ListAdsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listAds(args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Anúncios\n\nEncontrados ${result.data.length} anúncio(s):\n\n${formatAds(result.data)}`,
+      },
+    ],
+  };
+}
+
+async function handleListCampaignAds(
+  client: MetaClient,
+  args: ListCampaignAdsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listCampaignAds(args.campaign_id, args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Anúncios da Campanha ${args.campaign_id}\n\nEncontrados ${result.data.length} anúncio(s):\n\n${formatAds(result.data)}`,
+      },
+    ],
+  };
+}
+
+async function handleGetAd(
+  client: MetaClient,
+  args: GetAdArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const ad = await client.getAd(args.ad_id, args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Anúncio: ${ad.name}\n\n${formatObject(ad)}`,
+      },
+    ],
+  };
+}
 
 async function handleCreateAd(
   client: MetaClient,
@@ -765,23 +1386,153 @@ async function handleCreateAd(
   };
 }
 
-// ==================== CREATIVE HANDLERS ====================
-
-async function handleCreateCreative(
+async function handleUpdateAd(
   client: MetaClient,
-  args: CreateCreativeArgs
+  args: UpdateAdArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.createCreative({
+  await client.updateAd(args.ad_id, {
     name: args.name,
-    object_story_spec: args.object_story_spec,
+    status: args.status,
   });
   return {
     content: [
       {
         type: 'text',
-        text: `# Criativo Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}`,
+        text: `# Anúncio Atualizado\n\n**ID:** ${args.ad_id}\n\nAlterações aplicadas com sucesso.`,
       },
     ],
+  };
+}
+
+async function handlePauseAd(
+  client: MetaClient,
+  args: PauseAdArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateAd(args.ad_id, { status: 'PAUSED' });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Anúncio Pausado\n\n**ID:** ${args.ad_id}\n\nO anúncio foi pausado com sucesso.`,
+      },
+    ],
+  };
+}
+
+async function handleActivateAd(
+  client: MetaClient,
+  args: ActivateAdArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateAd(args.ad_id, { status: 'ACTIVE' });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Anúncio Ativado\n\n**ID:** ${args.ad_id}\n\nO anúncio foi ativado com sucesso.`,
+      },
+    ],
+  };
+}
+
+// ==================== CREATIVE HANDLERS ====================
+
+async function handleListCreatives(
+  client: MetaClient,
+  args: ListCreativesArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listCreatives(args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Criativos\n\nEncontrados ${result.data.length} criativo(s):\n\n${formatCreatives(result.data)}`,
+      },
+    ],
+  };
+}
+
+async function handleGetCreative(
+  client: MetaClient,
+  args: GetCreativeArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const creative = await client.getCreative(args.creative_id, args.fields);
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Criativo: ${creative.name}\n\n${formatObject(creative)}`,
+      },
+    ],
+  };
+}
+
+async function handleCreateCreative(
+  client: MetaClient,
+  args: CreateCreativeArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Validação básica
+  if (!args.object_story_spec) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro de Validação
+
+O campo \`object_story_spec\` é obrigatório para criar um criativo.
+
+**Exemplo de estrutura:**
+\`\`\`json
+{
+  "page_id": "ID_DA_PAGINA",
+  "link_data": {
+    "link": "https://seu-site.com",
+    "message": "Texto do post"
+  }
+}
+\`\`\`
+
+**Dica:** Use \`list_facebook_pages\` para obter o page_id.`,
+        },
+      ],
+    };
+  }
+
+  const spec = args.object_story_spec as { page_id?: string; instagram_user_id?: string };
+  
+  if (!spec.page_id) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro de Validação
+
+O campo \`page_id\` é obrigatório no \`object_story_spec\`.
+
+**Dica:** Use \`list_facebook_pages\` para obter o ID da sua página.`,
+        },
+      ],
+    };
+  }
+
+  const result = await client.createCreative({
+    name: args.name,
+    object_story_spec: args.object_story_spec,
+  });
+  
+  let successMessage = `# Criativo Criado
+
+**ID:** ${result.id}
+**Nome:** ${args.name}
+**Page ID:** ${spec.page_id}`;
+
+  if (spec.instagram_user_id) {
+    successMessage += `\n**Instagram ID:** ${spec.instagram_user_id}`;
+  }
+
+  successMessage += `\n\n**Próximo passo:** Use este creative_id ao criar um anúncio com \`create_ad\`.`;
+
+  return {
+    content: [{ type: 'text', text: successMessage }],
   };
 }
 
@@ -839,6 +1590,25 @@ async function handleGetAdsetInsights(
       {
         type: 'text',
         text: `# Insights do Ad Set ${args.adset_id}\n\n${formatInsights(result.data)}`,
+      },
+    ],
+  };
+}
+
+async function handleGetAdInsights(
+  client: MetaClient,
+  args: GetAdInsightsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.getInsights(args.ad_id, {
+    date_preset: args.date_preset,
+    time_range: args.time_range,
+    fields: args.fields,
+  });
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Insights do Anúncio ${args.ad_id}\n\n${formatInsights(result.data)}`,
       },
     ],
   };
@@ -1017,6 +1787,24 @@ function formatAdSets(
     .join('\n');
 }
 
+function formatAds(
+  ads: Array<{ id: string; name: string; status: string; effective_status?: string; adset_id?: string; creative?: object }>
+): string {
+  if (ads.length === 0) return 'Nenhum anúncio encontrado.';
+
+  return ads
+    .map(
+      (a) => `### ${a.name}
+- **ID:** ${a.id}
+- **Status:** ${a.status}
+- **Effective Status:** ${a.effective_status || 'N/A'}
+- **Ad Set:** ${a.adset_id || 'N/A'}
+${a.creative ? `- **Creative ID:** ${(a.creative as { id?: string }).id || 'N/A'}` : ''}
+`
+    )
+    .join('\n');
+}
+
 function formatInsights(insights: Array<Record<string, unknown>>): string {
   if (!insights || insights.length === 0) return 'Nenhum dado de insights disponível.';
 
@@ -1052,6 +1840,31 @@ function formatInsights(insights: Array<Record<string, unknown>>): string {
   }
 
   return lines.join('\n');
+}
+
+function formatCreatives(
+  creatives: Array<{ id: string; name: string; object_story_spec?: object; thumbnail_url?: string }>
+): string {
+  if (creatives.length === 0) return 'Nenhum criativo encontrado.';
+
+  return creatives
+    .map(
+      (c) => `### ${c.name}
+- **ID:** ${c.id}
+${c.thumbnail_url ? `- **Thumbnail:** [Ver imagem](${c.thumbnail_url})` : ''}
+${c.object_story_spec ? `- **Tipo:** ${getCreativeType(c.object_story_spec)}` : ''}
+`
+    )
+    .join('\n');
+}
+
+function getCreativeType(objectStorySpec: object): string {
+  const spec = objectStorySpec as Record<string, unknown>;
+  if (spec.link_data) return 'Link Ad';
+  if (spec.video_data) return 'Video Ad';
+  if (spec.photo_data) return 'Image Ad';
+  if (spec.text_data) return 'Text Ad';
+  return 'Unknown';
 }
 
 function formatAudiences(
