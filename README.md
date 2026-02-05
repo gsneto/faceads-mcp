@@ -157,6 +157,27 @@ npm run build
 npm start
 ```
 
+### Usar código local no Cursor IDE
+
+Para desenvolvimento e testes, configure o MCP para usar o código local em vez do pacote npm:
+
+```json
+{
+  "mcpServers": {
+    "fb-marketing-mcp": {
+      "command": "node",
+      "args": ["/caminho/absoluto/para/projeto/dist/index.js"],
+      "env": {
+        "META_ACCESS_TOKEN": "seu_token_aqui",
+        "META_AD_ACCOUNT_ID": "act_123456789"
+      }
+    }
+  }
+}
+```
+
+> **Importante:** Após alterações no código TypeScript, execute `npm run build` e reinicie o MCP (Reload MCP Servers) para que as mudanças tenham efeito.
+
 ### Scripts de scraping (manutenção)
 
 ```bash

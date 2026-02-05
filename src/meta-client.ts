@@ -626,8 +626,21 @@ export class MetaClient {
     subtype: string;
     description?: string;
     customer_file_source?: string;
+    rule?: object;
+    pixel_id?: string;
+    prefill?: boolean;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/customaudiences`, params);
+    // Construir params, convertendo rule para JSON string se necessário
+    const apiParams: Record<string, unknown> = {
+      name: params.name,
+      subtype: params.subtype,
+      ...(params.description && { description: params.description }),
+      ...(params.customer_file_source && { customer_file_source: params.customer_file_source }),
+      ...(params.rule && { rule: JSON.stringify(params.rule) }),
+      ...(params.pixel_id && { pixel_id: params.pixel_id }),
+      ...(params.prefill !== undefined && { prefill: params.prefill }),
+    };
+    return this.post<{ id: string }>(`${this.config.adAccountId}/customaudiences`, apiParams);
   }
 
   /**

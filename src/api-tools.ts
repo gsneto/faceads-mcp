@@ -855,7 +855,30 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   },
   {
     name: 'create_custom_audience',
-    description: 'Cria uma audiência customizada. Requer API key configurada.',
+    description: `Cria uma audiência customizada.
+
+**Subtipos e campos obrigatórios:**
+- CUSTOM: Requer customer_file_source (ex: "USER_PROVIDED_ONLY")
+- WEBSITE: Requer rule com pixel_id e retention
+- APP: Requer rule com app_id
+- ENGAGEMENT: Requer rule com page_id ou ig_business_id
+
+**Exemplo para WEBSITE (visitantes do site 30 dias):**
+\`\`\`json
+{
+  "name": "Visitantes Site 30D",
+  "subtype": "WEBSITE",
+  "rule": {
+    "inclusions": {
+      "operator": "or",
+      "rules": [{
+        "event_sources": [{"id": "PIXEL_ID", "type": "pixel"}],
+        "retention_seconds": 2592000
+      }]
+    }
+  }
+}
+\`\`\``,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -866,6 +889,17 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
           description: 'Subtipo da audiência',
         },
         description: { type: 'string', description: 'Descrição da audiência' },
+        customer_file_source: {
+          type: 'string',
+          enum: ['USER_PROVIDED_ONLY', 'PARTNER_PROVIDED_ONLY', 'BOTH_USER_AND_PARTNER_PROVIDED'],
+          description: 'Fonte dos dados (obrigatório para CUSTOM)',
+        },
+        rule: {
+          type: 'object',
+          description: 'Regra de audiência (obrigatório para WEBSITE, APP, ENGAGEMENT)',
+        },
+        pixel_id: { type: 'string', description: 'ID do pixel (para WEBSITE)' },
+        prefill: { type: 'boolean', description: 'Preencher com dados históricos' },
       },
       required: ['name', 'subtype'],
     },
@@ -2309,10 +2343,37 @@ async function handleCreateCustomAudience(
   client: MetaClient,
   args: CreateCustomAudienceArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Validação de campos obrigatórios por subtipo
+  if (args.subtype === 'CUSTOM' && !args.customer_file_source) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro de Validação\n\nPara audiências do tipo CUSTOM, o campo \`customer_file_source\` é obrigatório.\n\nValores aceitos: USER_PROVIDED_ONLY, PARTNER_PROVIDED_ONLY, BOTH_USER_AND_PARTNER_PROVIDED`,
+        },
+      ],
+    };
+  }
+  
+  if (['WEBSITE', 'APP', 'ENGAGEMENT'].includes(args.subtype) && !args.rule) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro de Validação\n\nPara audiências do tipo ${args.subtype}, o campo \`rule\` é obrigatório.\n\nConsulte a documentação para exemplos de regras.`,
+        },
+      ],
+    };
+  }
+
   const result = await client.createCustomAudience({
     name: args.name,
     subtype: args.subtype,
     description: args.description,
+    customer_file_source: args.customer_file_source,
+    rule: args.rule,
+    pixel_id: args.pixel_id,
+    prefill: args.prefill,
   });
   return {
     content: [

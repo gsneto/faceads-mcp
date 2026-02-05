@@ -381,6 +381,22 @@ export const createCustomAudienceSchema = z.object({
     .enum(['CUSTOM', 'WEBSITE', 'APP', 'OFFLINE_CONVERSION', 'LOOKALIKE', 'ENGAGEMENT'])
     .describe('Subtipo da audiência'),
   description: z.string().optional().describe('Descrição da audiência'),
+  customer_file_source: z
+    .enum(['USER_PROVIDED_ONLY', 'PARTNER_PROVIDED_ONLY', 'BOTH_USER_AND_PARTNER_PROVIDED'])
+    .optional()
+    .describe('Fonte dos dados (obrigatório para subtype CUSTOM). USER_PROVIDED_ONLY = dados próprios'),
+  rule: z
+    .record(z.string(), z.unknown())
+    .optional()
+    .describe('Regra de audiência (obrigatório para WEBSITE, APP, ENGAGEMENT). Ex: {"inclusions":{"operator":"or","rules":[{"event_sources":[{"id":"PIXEL_ID"}],"retention_seconds":2592000}]}}'),
+  pixel_id: z
+    .string()
+    .optional()
+    .describe('ID do pixel (para audiências WEBSITE)'),
+  prefill: z
+    .boolean()
+    .optional()
+    .describe('Preencher com dados históricos (default: true)'),
 });
 
 export const getReachEstimateSchema = z.object({

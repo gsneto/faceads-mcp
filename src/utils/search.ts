@@ -278,7 +278,7 @@ export function searchDocuments(
     minRelevance?: number;
   } = {}
 ): SearchResult[] {
-  const { section, limit = 10, minRelevance = 5 } = options;
+  const { section, limit = 10, minRelevance = 20 } = options;
 
   // Filtrar por seção se especificado
   let filteredDocs = documents;
