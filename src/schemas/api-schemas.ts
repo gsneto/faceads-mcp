@@ -30,11 +30,17 @@ export const getInstagramAccountSchema = z.object({
 
 // ==================== SCHEMAS DE CAMPANHAS ====================
 
+// Schema para filtrar por status efetivo
+const effectiveStatusSchema = z.array(
+  z.enum(['ACTIVE', 'PAUSED', 'DELETED', 'ARCHIVED', 'PENDING_REVIEW', 'DISAPPROVED', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED', 'IN_PROCESS', 'WITH_ISSUES'])
+).describe('Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só campanhas ativas');
+
 export const listCampaignsSchema = z.object({
   fields: z
     .array(z.string())
     .optional()
     .describe('Campos a retornar (default: id, name, status, objective)'),
+  effective_status: effectiveStatusSchema.optional(),
 });
 
 export const getCampaignSchema = z.object({
@@ -85,6 +91,7 @@ export const activateCampaignSchema = z.object({
 
 export const listAdsetsSchema = z.object({
   fields: z.array(z.string()).optional().describe('Campos a retornar'),
+  effective_status: effectiveStatusSchema.optional(),
 });
 
 export const createAdsetSchema = z.object({
@@ -338,6 +345,30 @@ export const getAttributionComparisonSchema = z.object({
     .describe('Tipos de conversao para comparar (default: purchase, lead, initiate_checkout)'),
 });
 
+export const getPerformanceSummarySchema = z.object({
+  date_preset: datePresetSchema.optional().default('last_30d').describe('Período (default: last_30d)'),
+  time_range: timeRangeSchema.optional(),
+  action_types: z
+    .array(z.string())
+    .optional()
+    .default(['purchase'])
+    .describe('Tipos de conversao para analisar (default: purchase). Ex: ["purchase", "lead"]'),
+});
+
+export const listCampaignAdsWithInsightsSchema = z.object({
+  campaign_id: z.string().min(1).describe('ID da campanha'),
+  date_preset: datePresetSchema.optional().default('last_30d').describe('Período (default: last_30d)'),
+  time_range: timeRangeSchema.optional(),
+  fields: z
+    .array(z.string())
+    .optional()
+    .default(['spend', 'impressions', 'clicks', 'actions', 'cost_per_action_type'])
+    .describe('Métricas de insights a retornar'),
+  action_attribution_windows: attributionWindowsSchema.optional().describe(
+    'Janelas de atribuição para quebrar métricas de conversão'
+  ),
+});
+
 // ==================== SCHEMAS DE AUDIÊNCIAS ====================
 
 export const listCustomAudiencesSchema = z.object({
@@ -403,6 +434,8 @@ export type GetCampaignInsightsArgs = z.infer<typeof getCampaignInsightsSchema>;
 export type GetAdsetInsightsArgs = z.infer<typeof getAdsetInsightsSchema>;
 export type GetAdInsightsArgs = z.infer<typeof getAdInsightsSchema>;
 export type GetAttributionComparisonArgs = z.infer<typeof getAttributionComparisonSchema>;
+export type GetPerformanceSummaryArgs = z.infer<typeof getPerformanceSummarySchema>;
+export type ListCampaignAdsWithInsightsArgs = z.infer<typeof listCampaignAdsWithInsightsSchema>;
 
 export type ListCustomAudiencesArgs = z.infer<typeof listCustomAudiencesSchema>;
 export type CreateCustomAudienceArgs = z.infer<typeof createCustomAudienceSchema>;
@@ -449,6 +482,8 @@ export const apiSchemas = {
   get_adset_insights: getAdsetInsightsSchema,
   get_ad_insights: getAdInsightsSchema,
   get_attribution_comparison: getAttributionComparisonSchema,
+  get_performance_summary: getPerformanceSummarySchema,
+  list_campaign_ads_with_insights: listCampaignAdsWithInsightsSchema,
   // Audiences
   list_custom_audiences: listCustomAudiencesSchema,
   create_custom_audience: createCustomAudienceSchema,

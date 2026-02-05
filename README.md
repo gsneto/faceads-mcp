@@ -66,21 +66,35 @@ Este MCP (Model Context Protocol) permite que IAs:
 
 ### Tools de Execução (requerem API key)
 
+#### Descoberta
+- `discover_ad_accounts`, `list_facebook_pages`, `get_instagram_account`
+
 #### Campanhas
-- `list_campaigns`, `get_campaign`, `create_campaign`, `update_campaign`
-- `pause_campaign`, `activate_campaign`
+- `list_campaigns` (suporta `effective_status` filtering), `get_campaign`
+- `create_campaign`, `update_campaign`, `pause_campaign`, `activate_campaign`
 
 #### Ad Sets
-- `list_adsets`, `create_adset`, `update_adset`
+- `list_adsets` (suporta `effective_status` filtering), `get_adset`
+- `create_adset`, `update_adset`, `pause_adset`, `activate_adset`
 
-#### Anúncios e Criativos
-- `create_ad`, `create_creative`
+#### Anúncios
+- `list_ads`, `list_campaign_ads`, `get_ad`
+- `create_ad`, `update_ad`, `pause_ad`, `activate_ad`
 
-#### Insights
-- `get_account_insights`, `get_campaign_insights`, `get_adset_insights`
+#### Criativos
+- `list_creatives`, `get_creative`, `create_creative`
+
+#### Insights e Atribuição
+- `get_account_insights`, `get_campaign_insights`, `get_adset_insights`, `get_ad_insights`
+- `get_attribution_comparison` - Compara modelos de atribuição (All vs Incremental)
+- `get_performance_summary` - **NOVO** - Resumo agregado com métricas por atribuição
+- `list_campaign_ads_with_insights` - **NOVO** - Lista ads de campanha com métricas (resolve N+1)
 
 #### Audiências
 - `list_custom_audiences`, `create_custom_audience`, `get_reach_estimate`
+
+#### API Customizada
+- `execute_api` - Chamadas customizadas para endpoints sem tool específica
 
 ### Prompts Pré-configurados
 

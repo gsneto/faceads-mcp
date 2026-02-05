@@ -47,6 +47,8 @@ import {
   type GetAdsetInsightsArgs,
   type GetAdInsightsArgs,
   type GetAttributionComparisonArgs,
+  type GetPerformanceSummaryArgs,
+  type ListCampaignAdsWithInsightsArgs,
   // Audiências
   type ListCustomAudiencesArgs,
   type CreateCustomAudienceArgs,
@@ -111,7 +113,14 @@ export const apiTools = [
   // ==================== CAMPANHAS ====================
   {
     name: 'list_campaigns',
-    description: 'Lista todas as campanhas da conta de anúncios. Requer API key configurada.',
+    description: `Lista campanhas da conta de anúncios. Suporta filtro por status.
+
+FILTRAR POR STATUS:
+- effective_status: ["ACTIVE"] → só campanhas ativas
+- effective_status: ["PAUSED"] → só campanhas pausadas
+- effective_status: ["ACTIVE", "PAUSED"] → ativas e pausadas
+
+DICA: Use effective_status para economizar tokens retornando só o que precisa.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -119,6 +128,14 @@ export const apiTools = [
           type: 'array',
           items: { type: 'string' },
           description: 'Campos a retornar (default: id, name, status, objective)',
+        },
+        effective_status: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['ACTIVE', 'PAUSED', 'DELETED', 'ARCHIVED', 'PENDING_REVIEW', 'DISAPPROVED', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'CAMPAIGN_PAUSED', 'IN_PROCESS', 'WITH_ISSUES'],
+          },
+          description: 'Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só campanhas ativas',
         },
       },
     },
@@ -207,11 +224,25 @@ export const apiTools = [
   // ==================== AD SETS ====================
   {
     name: 'list_adsets',
-    description: 'Lista todos os conjuntos de anúncios da conta. Requer API key configurada.',
+    description: `Lista conjuntos de anúncios da conta. Suporta filtro por status.
+
+FILTRAR POR STATUS:
+- effective_status: ["ACTIVE"] → só ad sets ativos
+- effective_status: ["PAUSED", "CAMPAIGN_PAUSED"] → pausados (inclui pausados por campanha)
+
+DICA: Use effective_status para economizar tokens.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+        effective_status: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['ACTIVE', 'PAUSED', 'DELETED', 'ARCHIVED', 'PENDING_REVIEW', 'DISAPPROVED', 'PREAPPROVED', 'PENDING_BILLING_INFO', 'CAMPAIGN_PAUSED', 'ADSET_PAUSED', 'IN_PROCESS', 'WITH_ISSUES'],
+          },
+          description: 'Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só ad sets ativos',
+        },
       },
     },
   },
@@ -722,6 +753,94 @@ INTERPRETAÇÃO:
       required: ['object_id', 'object_type'],
     },
   },
+  {
+    name: 'get_performance_summary',
+    description: `Resumo de performance da conta com métricas agregadas por atribuição (all vs incremental).
+
+RETORNA:
+- spend total do período
+- Para cada action_type: all_conversions, incremental, cpa_all, cpa_incremental, incremental_pct
+- ROAS (apenas se purchase_conversion_value existir nos dados)
+
+INTERPRETAÇÃO:
+- incremental_pct < 30% → alto risco de pagar por conversões orgânicas
+- CPA incremental mostra o custo real por conversão adicional
+- ROAS incremental é o retorno real sobre investimento
+
+EXEMPLO:
+action_types: ["purchase", "lead"]  // opcional, default: ["purchase"]`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        date_preset: {
+          type: 'string',
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+          description: 'Período (default: last_30d)',
+        },
+        time_range: {
+          type: 'object',
+          properties: {
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
+          },
+          description: 'Intervalo de datas personalizado',
+        },
+        action_types: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Tipos de conversão para analisar (default: ["purchase"]). Ex: ["purchase", "lead"]',
+        },
+      },
+    },
+  },
+  {
+    name: 'list_campaign_ads_with_insights',
+    description: `Lista todos os anúncios de uma campanha JÁ COM métricas de insights.
+
+RESOLVE O PROBLEMA N+1:
+- Antes: list_campaign_ads → loop de get_ad_insights por ad
+- Agora: Uma chamada só retorna ads + métricas
+
+SUPORTA ATRIBUIÇÃO:
+- action_attribution_windows: ["1d_click", "7d_click", "incrementality"]
+- Retorna conversões quebradas por janela
+
+RETORNO:
+Para cada ad: id, name, status, effective_status, spend, impressions, clicks, actions (com atribuição se solicitado)`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        campaign_id: { type: 'string', description: 'ID da campanha' },
+        date_preset: {
+          type: 'string',
+          enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
+          description: 'Período (default: last_30d)',
+        },
+        time_range: {
+          type: 'object',
+          properties: {
+            since: { type: 'string', description: 'Data inicial (YYYY-MM-DD)' },
+            until: { type: 'string', description: 'Data final (YYYY-MM-DD)' },
+          },
+          description: 'Intervalo de datas personalizado',
+        },
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Métricas de insights (default: spend, impressions, clicks, actions, cost_per_action_type)',
+        },
+        action_attribution_windows: {
+          type: 'array',
+          items: { 
+            type: 'string',
+            enum: ['1d_click', '7d_click', '28d_click', '1d_view', '7d_view', '28d_view', '1d_ev', 'incrementality', 'dda'],
+          },
+          description: 'Janelas de atribuição para quebrar métricas de conversão',
+        },
+      },
+      required: ['campaign_id'],
+    },
+  },
 
   // ==================== AUDIÊNCIAS ====================
   {
@@ -1017,6 +1136,18 @@ export async function handleApiTool(
         return await handleGetAttributionComparison(client, validation.data);
       }
 
+      case 'get_performance_summary': {
+        const validation = validateArgs(apiSchemas.get_performance_summary, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetPerformanceSummary(client, validation.data);
+      }
+
+      case 'list_campaign_ads_with_insights': {
+        const validation = validateArgs(apiSchemas.list_campaign_ads_with_insights, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListCampaignAdsWithInsights(client, validation.data);
+      }
+
       // ==================== AUDIÊNCIAS ====================
       case 'list_custom_audiences': {
         const validation = validateArgs(apiSchemas.list_custom_audiences, args);
@@ -1217,12 +1348,17 @@ async function handleListCampaigns(
   client: MetaClient,
   args: ListCampaignsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listCampaigns(args.fields);
+  const result = await client.listCampaigns(args.fields, args.effective_status);
+  
+  const filterNote = args.effective_status 
+    ? `\n**Filtro:** ${args.effective_status.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Campanhas\n\nEncontradas ${result.data.length} campanha(s):\n\n${formatCampaigns(result.data)}`,
+        text: `# Campanhas${filterNote}\nEncontradas ${result.data.length} campanha(s):\n\n${formatCampaigns(result.data)}`,
       },
     ],
   };
@@ -1351,12 +1487,17 @@ async function handleListAdsets(
   client: MetaClient,
   args: ListAdsetsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listAdSets(args.fields);
+  const result = await client.listAdSets(args.fields, args.effective_status);
+  
+  const filterNote = args.effective_status 
+    ? `\n**Filtro:** ${args.effective_status.join(', ')}\n` 
+    : '';
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Conjuntos de Anúncios\n\nEncontrados ${result.data.length} ad set(s):\n\n${formatAdSets(result.data)}`,
+        text: `# Conjuntos de Anúncios${filterNote}\nEncontrados ${result.data.length} ad set(s):\n\n${formatAdSets(result.data)}`,
       },
     ],
   };
@@ -1896,6 +2037,248 @@ async function handleGetAttributionComparison(
   lines.push('| Incrementality | Quer saber impacto real dos anúncios | Número muito menor |');
   lines.push('');
   lines.push('**Regra prática:** Se `incrementality < 30%` do total, considere testar otimização First Conversion no ad set.');
+  
+  return {
+    content: [{
+      type: 'text',
+      text: lines.join('\n'),
+    }],
+  };
+}
+
+async function handleGetPerformanceSummary(
+  client: MetaClient,
+  args: GetPerformanceSummaryArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const actionTypes = args.action_types || ['purchase'];
+  
+  // Buscar insights da conta com atribuição expandida
+  const result = await client.getAccountInsights({
+    date_preset: args.date_preset || 'last_30d',
+    time_range: args.time_range,
+    fields: ['spend', 'actions', 'cost_per_action_type', 'action_values'],
+    action_attribution_windows: ['1d_click', '7d_click', 'incrementality'],
+    use_unified_attribution_setting: false,
+  });
+  
+  if (!result.data || result.data.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: 'Nenhum dado de insights disponível para o período selecionado.',
+      }],
+    };
+  }
+  
+  const data = result.data[0];
+  const spend = parseFloat(data.spend as string || '0');
+  const actions = (data.actions as Array<Record<string, unknown>>) || [];
+  const actionValues = (data.action_values as Array<Record<string, unknown>>) || [];
+  
+  // Construir resumo
+  const summary: {
+    spend: number;
+    period: string;
+    conversions: Record<string, {
+      all_conversions: number;
+      incremental: number;
+      cpa_all: number;
+      cpa_incremental: number;
+      incremental_pct: number;
+    }>;
+    roas: { all: number; incremental: number } | null;
+    roas_note?: string;
+  } = {
+    spend,
+    period: `${data.date_start || ''} a ${data.date_stop || ''}`,
+    conversions: {},
+    roas: null,
+  };
+  
+  // Processar cada tipo de conversão
+  for (const actionType of actionTypes) {
+    const action = actions.find(a => a.action_type === actionType);
+    
+    if (action) {
+      const allConversions = parseFloat(action.value as string || '0');
+      const incremental = parseFloat(action['incrementality'] as string || '0');
+      
+      summary.conversions[actionType] = {
+        all_conversions: allConversions,
+        incremental,
+        cpa_all: allConversions > 0 ? spend / allConversions : 0,
+        cpa_incremental: incremental > 0 ? spend / incremental : 0,
+        incremental_pct: allConversions > 0 ? (incremental / allConversions) * 100 : 0,
+      };
+    }
+  }
+  
+  // Calcular ROAS se houver valor de conversão
+  const purchaseValue = actionValues.find(av => av.action_type === 'purchase' || av.action_type === 'omni_purchase');
+  
+  if (purchaseValue && purchaseValue.value) {
+    const totalValue = parseFloat(purchaseValue.value as string || '0');
+    const incrementalValue = parseFloat(purchaseValue['incrementality'] as string || '0');
+    
+    summary.roas = {
+      all: spend > 0 ? totalValue / spend : 0,
+      incremental: spend > 0 ? incrementalValue / spend : 0,
+    };
+  } else {
+    summary.roas_note = 'ROAS não disponível - configure purchase_conversion_value na conta para rastrear valor de conversão.';
+  }
+  
+  // Formatar output
+  const lines: string[] = [
+    '# Resumo de Performance',
+    '',
+    `**Período:** ${summary.period}`,
+    `**Gasto Total:** R$ ${summary.spend.toFixed(2)}`,
+    '',
+  ];
+  
+  // Métricas por tipo de conversão
+  for (const [actionType, metrics] of Object.entries(summary.conversions)) {
+    const riskEmoji = metrics.incremental_pct < 30 ? '⚠️' : (metrics.incremental_pct < 50 ? '⚡' : '✅');
+    
+    lines.push(`## ${actionType.toUpperCase()}`);
+    lines.push('');
+    lines.push(`| Métrica | All | Incremental |`);
+    lines.push(`|---------|-----|-------------|`);
+    lines.push(`| Conversões | ${metrics.all_conversions.toFixed(0)} | ${metrics.incremental.toFixed(0)} |`);
+    lines.push(`| CPA | R$ ${metrics.cpa_all.toFixed(2)} | R$ ${metrics.cpa_incremental.toFixed(2)} |`);
+    lines.push('');
+    lines.push(`${riskEmoji} **% Incremental:** ${metrics.incremental_pct.toFixed(1)}%`);
+    lines.push('');
+  }
+  
+  // ROAS
+  lines.push('## ROAS');
+  lines.push('');
+  if (summary.roas) {
+    lines.push(`| Métrica | All | Incremental |`);
+    lines.push(`|---------|-----|-------------|`);
+    lines.push(`| ROAS | ${summary.roas.all.toFixed(2)}x | ${summary.roas.incremental.toFixed(2)}x |`);
+  } else {
+    lines.push(`*${summary.roas_note}*`);
+  }
+  lines.push('');
+  
+  // Interpretação
+  lines.push('---');
+  lines.push('');
+  lines.push('**Interpretação:**');
+  lines.push('- % Incremental < 30% ⚠️ = alto risco de pagar por conversões orgânicas');
+  lines.push('- % Incremental 30-50% ⚡ = considere testar First Conversion');
+  lines.push('- % Incremental > 50% ✅ = boa eficiência incremental');
+  
+  return {
+    content: [{
+      type: 'text',
+      text: lines.join('\n'),
+    }],
+  };
+}
+
+async function handleListCampaignAdsWithInsights(
+  client: MetaClient,
+  args: ListCampaignAdsWithInsightsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // 1. Listar ads da campanha
+  const adsResult = await client.listCampaignAds(args.campaign_id, ['id', 'name', 'status', 'effective_status']);
+  
+  if (!adsResult.data || adsResult.data.length === 0) {
+    return {
+      content: [{
+        type: 'text',
+        text: `Nenhum anúncio encontrado na campanha ${args.campaign_id}.`,
+      }],
+    };
+  }
+  
+  const ads = adsResult.data;
+  const insightsFields = args.fields || ['spend', 'impressions', 'clicks', 'actions', 'cost_per_action_type'];
+  
+  // 2. Buscar insights de cada ad em paralelo (batch interno)
+  const insightsPromises = ads.map(async (ad) => {
+    try {
+      const insights = await client.getInsights(ad.id as string, {
+        date_preset: args.date_preset || 'last_30d',
+        time_range: args.time_range,
+        fields: insightsFields,
+        action_attribution_windows: args.action_attribution_windows,
+        use_unified_attribution_setting: args.action_attribution_windows ? false : undefined,
+      });
+      return { ad, insights: insights.data?.[0] || null };
+    } catch {
+      // Se falhar para um ad específico, continuar com os outros
+      return { ad, insights: null };
+    }
+  });
+  
+  const results = await Promise.all(insightsPromises);
+  
+  // 3. Formatar output
+  const lines: string[] = [
+    `# Anúncios da Campanha ${args.campaign_id}`,
+    '',
+    `**Total:** ${ads.length} anúncio(s)`,
+    `**Período:** ${args.date_preset || 'last_30d'}`,
+  ];
+  
+  if (args.action_attribution_windows) {
+    lines.push(`**Atribuição:** ${args.action_attribution_windows.join(', ')}`);
+  }
+  lines.push('');
+  
+  for (const { ad, insights } of results) {
+    const statusEmoji = ad.effective_status === 'ACTIVE' ? '✅' : (ad.effective_status === 'PAUSED' ? '⏸️' : '❌');
+    
+    lines.push(`## ${statusEmoji} ${ad.name}`);
+    lines.push(`**ID:** ${ad.id} | **Status:** ${ad.effective_status}`);
+    lines.push('');
+    
+    if (insights) {
+      const spend = parseFloat(insights.spend as string || '0');
+      const impressions = parseInt(insights.impressions as string || '0', 10);
+      const clicks = parseInt(insights.clicks as string || '0', 10);
+      const ctr = impressions > 0 ? (clicks / impressions) * 100 : 0;
+      
+      lines.push(`| Métrica | Valor |`);
+      lines.push(`|---------|-------|`);
+      lines.push(`| Spend | R$ ${spend.toFixed(2)} |`);
+      lines.push(`| Impressões | ${impressions.toLocaleString()} |`);
+      lines.push(`| Cliques | ${clicks.toLocaleString()} |`);
+      lines.push(`| CTR | ${ctr.toFixed(2)}% |`);
+      
+      // Processar actions se existirem
+      const actions = (insights.actions as Array<Record<string, unknown>>) || [];
+      if (actions.length > 0) {
+        lines.push('');
+        lines.push('**Conversões:**');
+        for (const action of actions) {
+          const actionType = action.action_type as string;
+          const value = action.value as string;
+          
+          // Se tiver atribuição, mostrar breakdown
+          if (args.action_attribution_windows) {
+            const attrValues = args.action_attribution_windows.map((w: string) => {
+              const v = action[w] as string | undefined;
+              return v ? `${w}: ${v}` : null;
+            }).filter(Boolean).join(', ');
+            
+            lines.push(`- ${actionType}: ${value} (${attrValues || 'sem dados de atribuição'})`);
+          } else {
+            lines.push(`- ${actionType}: ${value}`);
+          }
+        }
+      }
+    } else {
+      lines.push('*Sem dados de insights disponíveis*');
+    }
+    
+    lines.push('');
+  }
   
   return {
     content: [{

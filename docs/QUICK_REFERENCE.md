@@ -238,6 +238,31 @@ POST /{ad_account_id}/adcreatives
 GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_preset=last_7d
 ```
 
+**Exemplo - Insights com Atribuição Incremental:**
+```
+GET /{campaign_id}/insights?fields=spend,actions,cost_per_action_type&action_attribution_windows=["1d_click","7d_click","incrementality"]&use_unified_attribution_setting=false
+```
+
+### Filtering por Status
+
+Use `filtering` para retornar apenas objetos com status específico (economiza tokens):
+
+**Exemplo - Listar só campanhas ativas:**
+```
+GET /{ad_account_id}/campaigns?fields=id,name,status&filtering=[{"field":"effective_status","operator":"IN","value":["ACTIVE"]}]
+```
+
+**Exemplo - Listar ad sets ativos ou pausados:**
+```
+GET /{ad_account_id}/adsets?fields=id,name,status&filtering=[{"field":"effective_status","operator":"IN","value":["ACTIVE","PAUSED"]}]
+```
+
+**Valores válidos para effective_status:**
+- `ACTIVE`, `PAUSED`, `DELETED`, `ARCHIVED`
+- `PENDING_REVIEW`, `DISAPPROVED`, `PREAPPROVED`
+- `CAMPAIGN_PAUSED`, `ADSET_PAUSED` (status herdado)
+- `IN_PROCESS`, `WITH_ISSUES`
+
 ### Audiências
 
 | Operação | Método | Endpoint |
@@ -245,6 +270,24 @@ GET /{ad_account_id}/insights?fields=impressions,clicks,spend,cpc,ctr&date_prese
 | Listar | GET | `/{ad_account_id}/customaudiences` |
 | Criar | POST | `/{ad_account_id}/customaudiences` |
 | Estimativa | GET | `/{ad_account_id}/reachestimate` |
+
+## Tools de Análise Avançada (MCP)
+
+| Tool | Descrição |
+|------|-----------|
+| `get_performance_summary` | Resumo agregado com métricas por atribuição (all vs incremental) |
+| `list_campaign_ads_with_insights` | Lista ads de campanha JÁ COM métricas (resolve N+1) |
+| `get_attribution_comparison` | Compara modelos de atribuição com CPA formatado |
+
+**get_performance_summary** - Retorna:
+- Spend total do período
+- Para cada action_type: all_conversions, incremental, cpa_all, cpa_incremental, % incremental
+- ROAS (apenas se `purchase_conversion_value` existir)
+
+**list_campaign_ads_with_insights** - Resolve o problema N+1:
+- Antes: `list_campaign_ads` → loop de `get_ad_insights` por ad
+- Agora: Uma chamada só retorna ads + métricas
+- Suporta `action_attribution_windows` para análise de eficiência
 
 ## Objetivos de Campanha
 

@@ -79,7 +79,7 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 ### Campanhas
 | Tool | Descrição |
 |------|-----------|
-| `list_campaigns` | Listar campanhas |
+| `list_campaigns` | Listar campanhas (suporta `effective_status` filtering) |
 | `get_campaign` | Detalhes de campanha |
 | `create_campaign` | Criar campanha |
 | `update_campaign` | Atualizar campanha |
@@ -89,7 +89,7 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 ### Ad Sets
 | Tool | Descrição |
 |------|-----------|
-| `list_adsets` | Listar ad sets |
+| `list_adsets` | Listar ad sets (suporta `effective_status` filtering) |
 | `get_adset` | Detalhes de ad set |
 | `create_adset` | Criar ad set |
 | `update_adset` | Atualizar ad set |
@@ -121,7 +121,9 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 | `get_campaign_insights` | Métricas de campanha (suporta atribuição) |
 | `get_adset_insights` | Métricas de ad set (suporta atribuição) |
 | `get_ad_insights` | Métricas de anúncio (suporta atribuição) |
-| `get_attribution_comparison` | **NOVO** - Compara All vs First vs Incremental |
+| `get_attribution_comparison` | Compara All vs First vs Incremental |
+| `get_performance_summary` | **NOVO** - Resumo agregado com métricas por atribuição |
+| `list_campaign_ads_with_insights` | **NOVO** - Lista ads de campanha JÁ COM métricas (resolve N+1) |
 
 ### Audiências
 | Tool | Descrição |
@@ -506,6 +508,23 @@ Use os prompts do MCP para contexto adicional:
 "Qual é o CPA incremental dos meus anúncios?"
 → get_attribution_comparison(object_id: "{ad_id}", object_type: "ad")
 → Mostra CPA por modelo de atribuição (All, First, Incremental)
+
+"Me dê um resumo de performance com atribuição incremental"
+→ get_performance_summary(date_preset: "last_30d", action_types: ["purchase", "lead"])
+→ Retorna spend, conversões all/incremental, CPA, ROAS (se configurado)
+
+"Liste todos os anúncios da campanha X com métricas"
+→ list_campaign_ads_with_insights(campaign_id: "{id}", action_attribution_windows: ["incrementality"])
+→ Retorna ads + insights em uma chamada só (resolve o problema N+1)
+```
+
+### Filtering (Economia de Tokens)
+```
+"Liste só campanhas ativas"
+→ list_campaigns(effective_status: ["ACTIVE"])
+
+"Liste ad sets ativos ou pausados"
+→ list_adsets(effective_status: ["ACTIVE", "PAUSED"])
 ```
 
 ### Operações Avançadas

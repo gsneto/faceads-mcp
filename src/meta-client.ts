@@ -305,11 +305,23 @@ export class MetaClient {
    * Lista campanhas da conta
    */
   async listCampaigns(
-    fields: string[] = ['id', 'name', 'status', 'objective', 'created_time']
+    fields: string[] = ['id', 'name', 'status', 'objective', 'created_time'],
+    effectiveStatus?: string[]
   ): Promise<{ data: Campaign[] }> {
-    return this.get<{ data: Campaign[] }>(`${this.config.adAccountId}/campaigns`, {
+    const params: Record<string, string> = {
       fields: fields.join(','),
-    });
+    };
+    
+    // Adiciona filtro por effective_status se especificado
+    if (effectiveStatus && effectiveStatus.length > 0) {
+      params.filtering = JSON.stringify([{
+        field: 'effective_status',
+        operator: 'IN',
+        value: effectiveStatus,
+      }]);
+    }
+    
+    return this.get<{ data: Campaign[] }>(`${this.config.adAccountId}/campaigns`, params);
   }
 
   /**
@@ -364,11 +376,23 @@ export class MetaClient {
    * Lista ad sets da conta
    */
   async listAdSets(
-    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget']
+    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget'],
+    effectiveStatus?: string[]
   ): Promise<{ data: AdSet[] }> {
-    return this.get<{ data: AdSet[] }>(`${this.config.adAccountId}/adsets`, {
+    const params: Record<string, string> = {
       fields: fields.join(','),
-    });
+    };
+    
+    // Adiciona filtro por effective_status se especificado
+    if (effectiveStatus && effectiveStatus.length > 0) {
+      params.filtering = JSON.stringify([{
+        field: 'effective_status',
+        operator: 'IN',
+        value: effectiveStatus,
+      }]);
+    }
+    
+    return this.get<{ data: AdSet[] }>(`${this.config.adAccountId}/adsets`, params);
   }
 
   /**
