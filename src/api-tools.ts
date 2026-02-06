@@ -5,6 +5,9 @@
  * Permitem criar, atualizar e gerenciar campanhas na plataforma Meta Ads.
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
 import { MetaClient, MetaClientError } from './meta-client.js';
 import { getConfigurationError, getMetaConfig, isMetaConfigured } from './utils/config.js';
 import {
@@ -1179,6 +1182,46 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
       required: ['method', 'endpoint'],
     },
   },
+
+  // ==================== CONTEXTO ====================
+  {
+    name: 'get_skill',
+    description: `Retorna o conteúdo do SKILL.md - guia completo para atuar como gestor de tráfego Meta Ads.
+
+Contém:
+- Capacidades e tools disponíveis
+- Fluxos de trabalho (criar campanha, auditoria, otimização)
+- Guardrails de segurança
+- Parâmetros obrigatórios (v24.0)
+- CBO vs ABO
+- Advantage+ Audience
+- Exemplos de uso
+
+Use esta tool no início da conversa para se configurar como gestor de tráfego.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'get_playbook',
+    description: `Retorna o conteúdo do PLAYBOOK.md - regras de otimização e thresholds específicos.
+
+Contém:
+- Thresholds de performance (CPA, ROAS, CTR)
+- Regras de otimização por objetivo
+- Valores específicos por localização
+- Estratégias de escala
+- Critérios de pausa/ativação
+
+Use esta tool quando precisar de regras específicas de otimização.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
 ];
 
 /**
@@ -1199,6 +1242,15 @@ export async function handleApiTool(
   args: unknown
 ): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   try {
+    // Tools que não requerem API configurada
+    if (name === 'get_skill') {
+      return await handleGetSkill();
+    }
+    if (name === 'get_playbook') {
+      return await handleGetPlaybook();
+    }
+
+    // Todas as outras tools requerem API configurada
     const client = requireApiConfig();
 
     switch (name) {
@@ -3112,6 +3164,78 @@ function formatObject(obj: Record<string, unknown>): string {
     }
   }
   return lines.join('\n');
+}
+
+// ==================== HANDLERS DE CONTEXTO ====================
+
+/**
+ * Obtém o diretório raiz do projeto
+ */
+function getProjectRoot(): string {
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  // Subir um nível de dist/ para a raiz do projeto
+  return path.resolve(__dirname, '..');
+}
+
+/**
+ * Handler para get_skill - retorna conteúdo do SKILL.md
+ */
+async function handleGetSkill(): Promise<{
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+}> {
+  try {
+    const skillPath = path.join(getProjectRoot(), 'SKILL.md');
+    
+    if (!fs.existsSync(skillPath)) {
+      return {
+        content: [{ type: 'text', text: '# Erro\n\nArquivo SKILL.md não encontrado.' }],
+        isError: true,
+      };
+    }
+    
+    const content = fs.readFileSync(skillPath, 'utf-8');
+    
+    return {
+      content: [{ type: 'text', text: content }],
+    };
+  } catch (error) {
+    return {
+      content: [{ type: 'text', text: `# Erro\n\nFalha ao ler SKILL.md: ${error}` }],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Handler para get_playbook - retorna conteúdo do PLAYBOOK.md
+ */
+async function handleGetPlaybook(): Promise<{
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+}> {
+  try {
+    const playbookPath = path.join(getProjectRoot(), 'PLAYBOOK.md');
+    
+    if (!fs.existsSync(playbookPath)) {
+      return {
+        content: [{ type: 'text', text: '# Erro\n\nArquivo PLAYBOOK.md não encontrado.' }],
+        isError: true,
+      };
+    }
+    
+    const content = fs.readFileSync(playbookPath, 'utf-8');
+    
+    return {
+      content: [{ type: 'text', text: content }],
+    };
+  } catch (error) {
+    return {
+      content: [{ type: 'text', text: `# Erro\n\nFalha ao ler PLAYBOOK.md: ${error}` }],
+      isError: true,
+    };
+  }
 }
 
 /**

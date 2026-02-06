@@ -98,6 +98,10 @@ Este MCP (Model Context Protocol) permite que IAs:
 #### API Customizada
 - `execute_api` - Chamadas customizadas para endpoints sem tool específica
 
+#### Contexto
+- `get_skill` - **NOVO** - Retorna conteúdo do SKILL.md (guia do gestor de tráfego)
+- `get_playbook` - **NOVO** - Retorna conteúdo do PLAYBOOK.md (regras de otimização)
+
 ### Prompts Pré-configurados
 
 | Prompt | Descrição |

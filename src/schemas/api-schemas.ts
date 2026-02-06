@@ -563,6 +563,14 @@ export type SearchGeolocationArgs = z.infer<typeof searchGeolocationSchema>;
 
 export type ExecuteApiArgs = z.infer<typeof executeApiSchema>;
 
+// ==================== SCHEMAS DE CONTEXTO ====================
+
+export const getSkillSchema = z.object({});
+export const getPlaybookSchema = z.object({});
+
+export type GetSkillArgs = z.infer<typeof getSkillSchema>;
+export type GetPlaybookArgs = z.infer<typeof getPlaybookSchema>;
+
 // ==================== SCHEMA MAP ====================
 
 export const apiSchemas = {
@@ -614,4 +622,7 @@ export const apiSchemas = {
   search_geolocation: searchGeolocationSchema,
   // API Customizada
   execute_api: executeApiSchema,
+  // Contexto
+  get_skill: getSkillSchema,
+  get_playbook: getPlaybookSchema,
 } as const;

@@ -139,6 +139,12 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 |------|-----------|
 | `execute_api` | Executa chamadas customizadas à API da Meta |
 
+### Contexto (não requer API)
+| Tool | Descrição |
+|------|-----------|
+| `get_skill` | **NOVO** - Retorna este SKILL.md para auto-configuração |
+| `get_playbook` | **NOVO** - Retorna PLAYBOOK.md com regras de otimização |
+
 ## Instruções de Uso
 
 ### 1. Consulta de Documentação
