@@ -1209,13 +1209,38 @@ Use esta tool no início da conversa para se configurar como gestor de tráfego.
     description: `Retorna o conteúdo do PLAYBOOK.md - regras de otimização e thresholds específicos.
 
 Contém:
-- Thresholds de performance (CPA, ROAS, CTR)
+- Thresholds de performance (CPA, ROAS, CTR, Hook Rate, Hold Rate)
 - Regras de otimização por objetivo
 - Valores específicos por localização
-- Estratégias de escala
+- Estratégia Andromeda (estrutura, criativos, CAPI)
+- Fluxos de diagnóstico (Hot Ad Bias, Diversidade Criativa, CAPI/EMQ)
+- Modelo híbrido ABO/CBO
 - Critérios de pausa/ativação
 
 Use esta tool quando precisar de regras específicas de otimização.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {},
+      required: [],
+    },
+  },
+  {
+    name: 'get_andromeda',
+    description: `Retorna o conteúdo do ANDROMEDA.md - guia oficial sobre o Meta Andromeda para este MCP.
+
+Contém:
+- O que é Meta Andromeda e a mudança de paradigma
+- Pilar 1: Diversidade Criativa (Framework P.D.A., Advantage+ Creative, Asset Feed Spec)
+- Pilar 2: Targeting Amplo (Advantage+ Audience, exclusões estratégicas)
+- Pilar 3: Dados e Sinais (CAPI, EMQ, deduplicação, Dataset Quality API)
+- Pilar 4: Estrutura de Campanhas Consolidada (CBO, ABO, bid strategies, Advantage+)
+- Pilar 5: Métricas e Atribuição (Hook/Hold Rate, MER, First Conversion)
+- Problemas conhecidos (Hot Ad Bias, Similarity Detection, Performance Cliff)
+- Checklist pré-flight Andromeda
+- Roadmap de implementação com ações via MCP
+- Referências cruzadas com documentação técnica da API (docs/)
+
+Use esta tool quando o contexto envolver estratégia de campanhas no era Andromeda, diversidade criativa, broad targeting, CAPI, ou estrutura consolidada.`,
     inputSchema: {
       type: 'object' as const,
       properties: {},
@@ -1248,6 +1273,9 @@ export async function handleApiTool(
     }
     if (name === 'get_playbook') {
       return await handleGetPlaybook();
+    }
+    if (name === 'get_andromeda') {
+      return await handleGetAndromeda();
     }
 
     // Todas as outras tools requerem API configurada
@@ -3233,6 +3261,36 @@ async function handleGetPlaybook(): Promise<{
   } catch (error) {
     return {
       content: [{ type: 'text', text: `# Erro\n\nFalha ao ler PLAYBOOK.md: ${error}` }],
+      isError: true,
+    };
+  }
+}
+
+/**
+ * Handler para get_andromeda - retorna conteúdo do ANDROMEDA.md
+ */
+async function handleGetAndromeda(): Promise<{
+  content: Array<{ type: 'text'; text: string }>;
+  isError?: boolean;
+}> {
+  try {
+    const andromedaPath = path.join(getProjectRoot(), 'ANDROMEDA.md');
+    
+    if (!fs.existsSync(andromedaPath)) {
+      return {
+        content: [{ type: 'text', text: '# Erro\n\nArquivo ANDROMEDA.md não encontrado.' }],
+        isError: true,
+      };
+    }
+    
+    const content = fs.readFileSync(andromedaPath, 'utf-8');
+    
+    return {
+      content: [{ type: 'text', text: content }],
+    };
+  } catch (error) {
+    return {
+      content: [{ type: 'text', text: `# Erro\n\nFalha ao ler ANDROMEDA.md: ${error}` }],
       isError: true,
     };
   }

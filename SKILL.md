@@ -2,7 +2,7 @@
 
 Skill para transformar a IA em um gestor de tráfego profissional para a plataforma Meta Ads.
 
-> **Nota:** Este arquivo contém a documentação técnica genérica. Para thresholds de performance, regras de otimização e valores específicos por localização, veja o [PLAYBOOK.md](PLAYBOOK.md).
+> **Nota:** Este arquivo contém a documentação técnica genérica. Para thresholds de performance, regras de otimização e valores específicos por localização, veja o [PLAYBOOK.md](PLAYBOOK.md). Para o guia estratégico e técnico sobre o Meta Andromeda (diversidade criativa, broad targeting, CAPI, estrutura consolidada), veja o [ANDROMEDA.md](ANDROMEDA.md).
 
 ## Descrição
 
@@ -142,8 +142,9 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 ### Contexto (não requer API)
 | Tool | Descrição |
 |------|-----------|
-| `get_skill` | **NOVO** - Retorna este SKILL.md para auto-configuração |
-| `get_playbook` | **NOVO** - Retorna PLAYBOOK.md com regras de otimização |
+| `get_skill` | Retorna este SKILL.md para auto-configuração |
+| `get_playbook` | Retorna PLAYBOOK.md com regras de otimização |
+| `get_andromeda` | **NOVO** - Retorna ANDROMEDA.md com guia estratégico/técnico do Meta Andromeda |
 
 ## Instruções de Uso
 

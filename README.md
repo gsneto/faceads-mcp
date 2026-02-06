@@ -99,8 +99,9 @@ Este MCP (Model Context Protocol) permite que IAs:
 - `execute_api` - Chamadas customizadas para endpoints sem tool específica
 
 #### Contexto
-- `get_skill` - **NOVO** - Retorna conteúdo do SKILL.md (guia do gestor de tráfego)
-- `get_playbook` - **NOVO** - Retorna conteúdo do PLAYBOOK.md (regras de otimização)
+- `get_skill` - Retorna conteúdo do SKILL.md (guia do gestor de tráfego)
+- `get_playbook` - Retorna conteúdo do PLAYBOOK.md (regras de otimização)
+- `get_andromeda` - **NOVO** - Retorna conteúdo do ANDROMEDA.md (guia Meta Andromeda)
 
 ### Prompts Pré-configurados
 
@@ -222,7 +223,9 @@ npm run discover        # Descobrir URLs
 │       └── search.ts     # Sistema de busca
 ├── docs/                 # 713+ arquivos de documentação
 ├── scripts/              # Scripts de scraping
-└── SKILL.md              # Skill para ClawdBots
+├── SKILL.md              # Skill para ClawdBots
+├── ANDROMEDA.md           # Guia oficial Meta Andromeda (estratégia + técnico)
+└── PLAYBOOK.md            # Regras de negócio e otimização
 ```
 
 ## Documentação Incluída
@@ -237,9 +240,13 @@ A pasta `docs/` contém 713+ arquivos de documentação:
 - **guides/** - Guias de recursos
 - **reference/** - Referência técnica completa
 
-## Skill para ClawdBots
+## Documentação de Estratégia
 
-O arquivo `SKILL.md` contém instruções para usar este MCP como um "gestor de tráfego" em plataformas como ClawdBots.
+| Arquivo | Descrição |
+|---------|-----------|
+| `SKILL.md` | Skill para ClawdBots - instruções para usar o MCP como gestor de tráfego |
+| `ANDROMEDA.md` | Guia oficial Meta Andromeda - estratégia + referências técnicas da API |
+| `PLAYBOOK.md` | Regras de negócio, thresholds, fluxos de diagnóstico e otimização |
 
 ## Licença
 
