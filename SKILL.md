@@ -75,6 +75,8 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 | `discover_ad_accounts` | **PRIMEIRA CHAMADA** - Descobre contas de anúncios do usuário |
 | `list_facebook_pages` | Lista páginas do Facebook (necessário para criativos) |
 | `get_instagram_account` | Obtém ID do Instagram vinculado à página |
+| `list_pixels` | **NOVO** - Lista pixels da conta (necessário para conversões) |
+| `search_geolocation` | **NOVO** - Busca keys de localização para targeting (CRÍTICO!) |
 
 ### Campanhas
 | Tool | Descrição |
@@ -179,7 +181,25 @@ IA: [Usa create_campaign com objetivo OUTCOME_TRAFFIC]
     [Sugere próximos passos: criar ad set e anúncio]
 ```
 
-### 5. Operações Avançadas (execute_api)
+### 5. Criação de Campanha de Conversões (Fluxo Completo)
+
+```
+Usuário: Crie uma campanha de conversões para São Paulo.
+
+IA: [Usa create_campaign com objetivo OUTCOME_SALES, status PAUSED]
+    [Usa list_pixels para obter pixel_id disponível]
+    [Usa search_geolocation com q="São Paulo" para obter key=460]
+    [Usa create_adset com:
+      - promoted_object: { pixel_id, custom_event_type: "PURCHASE" }
+      - targeting: { geo_locations: { regions: [{ key: "460" }] }, age_min: 18, age_max: 65 }
+      - advantage_audience: 1
+    ]
+    [Usa list_facebook_pages para obter page_id]
+    [Usa create_creative com page_id e textos]
+    [Usa create_ad vinculando creative ao ad set]
+```
+
+### 6. Operações Avançadas (execute_api)
 
 Use `execute_api` para endpoints sem tool específica:
 
@@ -221,6 +241,35 @@ IA: [Usa execute_api com:
 - Use **ABO sem sharing** para testes A/B com controle exato
 - Use **ABO com sharing** para controle com alguma flexibilidade
 
+### Advantage+ Audience (v24.0)
+
+O parâmetro `advantage_audience` é **obrigatório** na API v24.0:
+
+| Valor | Comportamento | Restrição de Idade |
+|-------|---------------|-------------------|
+| `1` (padrão) | Meta otimiza público automaticamente | `age_min` deve ser 18, `age_max` deve ser 65 |
+| `0` | Targeting manual rígido | Qualquer faixa etária permitida |
+
+**CRÍTICO:** Com `advantage_audience=1`, a API **REJEITA** (erro 1870189):
+- `age_max < 65`
+- `age_min > 18`
+
+**Quando usar cada opção:**
+- **advantage_audience=1**: Campanhas de performance onde o Meta pode otimizar
+- **advantage_audience=0**: Testes A/B ou quando precisa controle exato de idade
+
+### Localização - NUNCA Invente Keys!
+
+Use `search_geolocation` para obter os keys corretos. Exemplos:
+
+| Localização | Tipo | Key |
+|-------------|------|-----|
+| Brasil | country | BR |
+| São Paulo (estado) | region | 460 |
+| São Paulo (cidade) | city | 269969 |
+
+**Erro comum:** Usar key arbitrário (ex: 3847) resulta em targeting errado (California em vez de São Paulo).
+
 ### Limites
 - Não exceder orçamentos sem confirmação explícita
 - Não ativar campanhas automaticamente
@@ -240,11 +289,14 @@ IA: [Usa execute_api com:
    - `discover_ad_accounts` → ID da conta
    - `list_facebook_pages` → page_id para criativos
    - `get_instagram_account` → instagram_user_id (se aplicável)
-1. **Campanha**: Definir objetivo e orçamento
-2. **Ad Set**: Definir público, posicionamento e lance
-3. **Creative**: Preparar mídia e textos (usar page_id)
-4. **Ad**: Associar creative ao ad set
-5. **Revisão**: Verificar configuração antes de ativar
+1. **Campanha**: `create_campaign` com objetivo (OUTCOME_SALES, OUTCOME_LEADS, etc.)
+2. **Preparação para Ad Set** (se objetivo for conversões):
+   - `list_pixels` → pixel_id para promoted_object
+   - `search_geolocation` → keys corretos de localização (NUNCA inventar!)
+3. **Ad Set**: `create_adset` com targeting, promoted_object e advantage_audience
+4. **Creative**: `create_creative` com page_id e textos
+5. **Ad**: `create_ad` associando creative ao ad set
+6. **Revisão**: Verificar configuração antes de ativar
 
 ### Auditoria de Campanhas
 

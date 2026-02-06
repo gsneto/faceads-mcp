@@ -53,6 +53,10 @@ import {
   type ListCustomAudiencesArgs,
   type CreateCustomAudienceArgs,
   type GetReachEstimateArgs,
+  // Pixels
+  type ListPixelsArgs,
+  // Geolocalização
+  type SearchGeolocationArgs,
   // API Customizada
   type ExecuteApiArgs,
 } from './schemas/index.js';
@@ -158,8 +162,29 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'create_campaign',
-    description:
-      'Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar. Objetivos: OUTCOME_AWARENESS (reconhecimento), OUTCOME_ENGAGEMENT (engajamento), OUTCOME_LEADS (leads), OUTCOME_SALES (conversões), OUTCOME_TRAFFIC (tráfego), OUTCOME_APP_PROMOTION (apps). O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.',
+    description: `Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar.
+
+**OBJETIVOS DISPONÍVEIS:**
+- OUTCOME_SALES (conversões) - requer promoted_object no ad set
+- OUTCOME_LEADS (leads/formulários)
+- OUTCOME_TRAFFIC (tráfego para site)
+- OUTCOME_ENGAGEMENT (engajamento)
+- OUTCOME_AWARENESS (reconhecimento de marca)
+- OUTCOME_APP_PROMOTION (instalação de apps)
+
+**FLUXO RECOMENDADO PARA CRIAR CAMPANHA COMPLETA:**
+1. \`create_campaign\` - criar a campanha (este passo)
+2. \`list_pixels\` - obter pixel_id (se objetivo for OUTCOME_SALES)
+3. \`search_geolocation\` - obter keys de localização corretos
+4. \`create_adset\` - criar ad set com targeting e promoted_object
+5. \`create_creative\` - criar criativo (imagem/vídeo + texto)
+6. \`create_ad\` - vincular ad set + criativo
+
+**ORÇAMENTO:**
+- Para CBO (Campaign Budget Optimization): defina daily_budget na campanha
+- Para ABO (Ad Set Budget): defina daily_budget nos ad sets individuais
+
+O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -264,7 +289,50 @@ DICA: Use effective_status para economizar tokens.`,
   },
   {
     name: 'create_adset',
-    description: 'Cria um novo conjunto de anúncios. O bid_strategy é incluído automaticamente como LOWEST_COST_WITHOUT_CAP. Orçamento mínimo no Brasil: R$5,33 (533 centavos). Use pelo menos 600 centavos para garantir.',
+    description: `Cria um novo conjunto de anúncios (Ad Set).
+
+**ANTES DE CRIAR:**
+1. Use \`list_pixels\` para obter pixel_id (se OFFSITE_CONVERSIONS)
+2. Use \`search_geolocation\` para obter keys de localização corretos (CRÍTICO!)
+
+**CAMPOS OBRIGATÓRIOS POR OBJETIVO:**
+- OFFSITE_CONVERSIONS: promoted_object com pixel_id + custom_event_type
+- APP_INSTALLS: promoted_object com application_id
+- PAGE_LIKES: promoted_object com page_id
+
+**ADVANTAGE+ AUDIENCE (v24.0):**
+- advantage_audience é injetado automaticamente como 1 (ativado)
+- CRÍTICO: Com Advantage+ ativado (1), a API REJEITA age_max < 65 ou age_min > 18 (erro 1870189)
+- Use age_min: 18 e age_max: 65 com Advantage+ - a idade vira SUGESTÃO, o Meta pode entregar para qualquer idade
+- Para controle RÍGIDO de idade, defina advantage_audience: 0
+
+**LOCALIZAÇÃO - ATENÇÃO:**
+NUNCA invente keys! Use search_geolocation para buscar os corretos.
+Exemplo errado: key 3847 = California, US (NÃO São Paulo!)
+Exemplo correto: key 460 = São Paulo, BR
+
+**EXEMPLO COMPLETO PARA CONVERSÕES:**
+\`\`\`json
+{
+  "name": "Ad Set Conversões",
+  "campaign_id": "123456789",
+  "optimization_goal": "OFFSITE_CONVERSIONS",
+  "billing_event": "IMPRESSIONS",
+  "daily_budget": 2000,
+  "promoted_object": {
+    "pixel_id": "326251992461180",
+    "custom_event_type": "PURCHASE"
+  },
+  "targeting": {
+    "geo_locations": {"regions": [{"key": "460"}]},
+    "age_min": 18,
+    "age_max": 65,
+    "targeting_automation": {"advantage_audience": 1}
+  }
+}
+\`\`\`
+
+**Orçamento mínimo Brasil:** R$5,33 (533 centavos). Use 600+ para garantir.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -278,8 +346,25 @@ DICA: Use effective_status para economizar tokens.`,
         },
         optimization_goal: {
           type: 'string',
-          enum: ['REACH', 'IMPRESSIONS', 'LINK_CLICKS', 'LANDING_PAGE_VIEWS', 'CONVERSIONS', 'VALUE', 'APP_INSTALLS', 'LEAD_GENERATION'],
-          description: 'Objetivo de otimização',
+          enum: [
+            // Alcance e impressões
+            'REACH', 'IMPRESSIONS', 'AD_RECALL_LIFT',
+            // Tráfego
+            'LINK_CLICKS', 'LANDING_PAGE_VIEWS',
+            // Conversões (OFFSITE_CONVERSIONS é o correto, não CONVERSIONS)
+            'OFFSITE_CONVERSIONS', 'VALUE',
+            // Engajamento
+            'ENGAGED_USERS', 'EVENT_RESPONSES', 'PAGE_LIKES', 'POST_ENGAGEMENT', 'THRUPLAY', 'VIDEO_VIEWS',
+            // Leads
+            'LEAD_GENERATION', 'QUALITY_LEAD',
+            // Apps
+            'APP_INSTALLS', 'APP_INSTALLS_AND_OFFSITE_CONVERSIONS',
+            // Instagram/Mensagens
+            'VISIT_INSTAGRAM_PROFILE', 'PROFILE_VISIT', 'CONVERSATIONS', 'MESSAGING_PURCHASE_CONVERSION', 'MESSAGING_APPOINTMENT_CONVERSION',
+            // Outros
+            'IN_APP_VALUE', 'SUBSCRIBERS', 'REMINDERS_SET', 'MEANINGFUL_CALL_ATTEMPT', 'QUALITY_CALL', 'DERIVED_EVENTS',
+          ],
+          description: 'Objetivo de otimização. Para conversões use OFFSITE_CONVERSIONS (não CONVERSIONS).',
         },
         targeting: { type: 'object', description: 'Especificação de targeting' },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial' },
@@ -289,6 +374,49 @@ DICA: Use effective_status para economizar tokens.`,
           description: 'Estratégia de lance (default: LOWEST_COST_WITHOUT_CAP)',
         },
         bid_amount: { type: 'number', description: 'Valor do lance em centavos (obrigatório para BID_CAP e COST_CAP)' },
+        promoted_object: {
+          type: 'object',
+          description: 'Objeto promovido. OBRIGATÓRIO para: OFFSITE_CONVERSIONS (pixel_id + custom_event_type), APP_INSTALLS (application_id), PAGE_LIKES (page_id). Use list_pixels para obter pixel_id.',
+          properties: {
+            pixel_id: { type: 'string', description: 'ID do pixel (obrigatório para OFFSITE_CONVERSIONS). Use list_pixels para obter.' },
+            custom_event_type: {
+              type: 'string',
+              enum: ['PURCHASE', 'LEAD', 'COMPLETE_REGISTRATION', 'ADD_TO_CART', 'INITIATE_CHECKOUT', 'ADD_PAYMENT_INFO', 'SEARCH', 'CONTENT_VIEW', 'VIEW_CONTENT', 'ADD_TO_WISHLIST', 'CONTACT', 'CUSTOMIZE_PRODUCT', 'DONATE', 'FIND_LOCATION', 'SCHEDULE', 'SUBMIT_APPLICATION', 'START_TRIAL', 'SUBSCRIBE', 'OTHER'],
+              description: 'Tipo de evento de conversão',
+            },
+            application_id: { type: 'string', description: 'ID do app (obrigatório para APP_INSTALLS)' },
+            object_store_url: { type: 'string', description: 'URL da app store' },
+            page_id: { type: 'string', description: 'ID da página (obrigatório para PAGE_LIKES)' },
+            event_id: { type: 'string', description: 'ID do evento' },
+            custom_conversion_id: { type: 'string', description: 'ID de conversão customizada' },
+            offline_conversion_data_set_id: { type: 'string', description: 'ID do dataset de conversão offline' },
+            product_set_id: { type: 'string', description: 'ID do conjunto de produtos' },
+          },
+        },
+        advantage_audience: {
+          type: 'number',
+          enum: [0, 1],
+          description: 'Público Advantage+ (0=desativado, 1=ativado). OBRIGATÓRIO na v24.0. Default: 1. ATENÇÃO: Com Advantage+ ativado (1), a API REJEITA age_max < 65 ou age_min > 18 (erro 1870189). Use 18-65 com Advantage+.',
+        },
+        start_time: {
+          type: 'string',
+          description: 'Data/hora de início do ad set (formato ISO 8601, ex: "2026-02-10T00:00:00-0300")',
+        },
+        end_time: {
+          type: 'string',
+          description: 'Data/hora de fim do ad set (formato ISO 8601, ex: "2026-02-28T23:59:59-0300")',
+        },
+        attribution_spec: {
+          type: 'array',
+          description: 'Especificação de atribuição. Ex: [{"event_type": "CLICK_THROUGH", "window_days": 7}] para 7d click only.',
+          items: {
+            type: 'object',
+            properties: {
+              event_type: { type: 'string', description: 'Tipo de evento (ex: "CLICK_THROUGH", "VIEW_THROUGH")' },
+              window_days: { type: 'number', description: 'Dias da janela de atribuição (ex: 1, 7, 28)' },
+            },
+          },
+        },
       },
       required: ['name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
     },
@@ -916,6 +1044,96 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     },
   },
 
+  // ==================== PIXELS ====================
+  {
+    name: 'list_pixels',
+    description: `Lista os pixels da conta de anúncios.
+
+**QUANDO USAR:**
+- ANTES de criar ad sets com optimization_goal: OFFSITE_CONVERSIONS
+- Para obter o pixel_id correto para o campo promoted_object
+
+**RETORNA:**
+- id: ID do pixel (use este valor no promoted_object.pixel_id)
+- name: Nome do pixel
+- last_fired_time: Última vez que o pixel disparou eventos
+
+**EXEMPLO DE USO:**
+1. Chamar list_pixels para obter os IDs disponíveis
+2. Usar o pixel_id no create_adset:
+\`\`\`json
+{
+  "promoted_object": {
+    "pixel_id": "326251992461180",
+    "custom_event_type": "PURCHASE"
+  }
+}
+\`\`\``,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Campos a retornar (default: id, name, last_fired_time, is_created_by_business)',
+        },
+      },
+    },
+  },
+
+  // ==================== GEOLOCALIZAÇÃO ====================
+  {
+    name: 'search_geolocation',
+    description: `Busca localizações para targeting de anúncios.
+
+**CRÍTICO:** SEMPRE use esta tool para obter os keys corretos de localização!
+Os keys do Meta são ESPECÍFICOS e NÃO correspondem a códigos geográficos padrão.
+
+**EXEMPLO DO PROBLEMA:**
+- Key 3847 = California, US (NÃO é São Paulo!)
+- Key 460 = São Paulo, BR (estado)
+- Key 2430536 = São Paulo, BR (cidade)
+
+**REFERÊNCIA RÁPIDA BRASIL:**
+| Localização | Tipo | Key |
+|-------------|------|-----|
+| Brasil | country | BR |
+| São Paulo (estado) | region | 460 |
+| Rio de Janeiro (estado) | region | 461 |
+| Minas Gerais (estado) | region | 462 |
+| Paraná (estado) | region | 478 |
+| São Paulo (cidade) | city | 2430536 |
+
+**COMO USAR NO TARGETING:**
+\`\`\`json
+{
+  "geo_locations": {
+    "regions": [{"key": "460"}],
+    "countries": ["BR"]
+  }
+}
+\`\`\`
+
+**DICA:** Para maior precisão, sempre busque pelo nome E verifique o country_code no resultado.`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        q: { type: 'string', description: 'Termo de busca (ex: "São Paulo", "Brasil", "California")' },
+        location_types: {
+          type: 'array',
+          items: {
+            type: 'string',
+            enum: ['country', 'region', 'city', 'zip', 'geo_market', 'electoral_district'],
+          },
+          description: 'Tipos de localização para filtrar (default: todos). Ex: ["region", "city"]',
+        },
+        country_code: { type: 'string', description: 'Código do país para filtrar resultados (ex: "BR", "US")' },
+        limit: { type: 'number', description: 'Número máximo de resultados (default: 25, máx: 100)' },
+      },
+      required: ['q'],
+    },
+  },
+
   // ==================== API CUSTOMIZADA ====================
   {
     name: 'execute_api',
@@ -1199,6 +1417,20 @@ export async function handleApiTool(
         const validation = validateArgs(apiSchemas.get_reach_estimate, args);
         if (!validation.success) return formatValidationError(validation.error);
         return await handleGetReachEstimate(client, validation.data);
+      }
+
+      // ==================== PIXELS ====================
+      case 'list_pixels': {
+        const validation = validateArgs(apiSchemas.list_pixels, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListPixels(client, validation.data);
+      }
+
+      // ==================== GEOLOCALIZAÇÃO ====================
+      case 'search_geolocation': {
+        const validation = validateArgs(apiSchemas.search_geolocation, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleSearchGeolocation(client, validation.data);
       }
 
       // ==================== API CUSTOMIZADA ====================
@@ -1571,22 +1803,76 @@ async function handleCreateAdset(
     };
   }
   
+  // Preparar targeting com targeting_automation (obrigatório na v24.0)
+  const advantageAudience = args.advantage_audience ?? 1; // Default: ativado
+  const targeting = args.targeting as Record<string, unknown>;
+  
+  // Injetar targeting_automation.advantage_audience se não existir
+  if (!targeting.targeting_automation) {
+    targeting.targeting_automation = { advantage_audience: advantageAudience };
+  } else if (typeof targeting.targeting_automation === 'object') {
+    const targetingAutomation = targeting.targeting_automation as Record<string, unknown>;
+    if (targetingAutomation.advantage_audience === undefined) {
+      targetingAutomation.advantage_audience = advantageAudience;
+    }
+  }
+  
+  // Coletar avisos para incluir na resposta
+  const warnings: string[] = [];
+  
+  // Validação de aviso: age_max < 65 ou age_min > 18 com Advantage+ ativado
+  // NOTA: A API Meta REJEITA essas combinações com erro 1870189
+  if (advantageAudience === 1) {
+    const ageMax = targeting.age_max as number | undefined;
+    const ageMin = targeting.age_min as number | undefined;
+    
+    if (ageMax !== undefined && ageMax < 65) {
+      warnings.push(`⚠️ **ERRO PREVISTO:** Com Advantage+ ativado (advantage_audience=1), age_max=${ageMax} será REJEITADO pela API (erro 1870189). Use age_max=65 ou defina advantage_audience=0 para controle rígido de idade.`);
+    }
+    if (ageMin !== undefined && ageMin > 18) {
+      warnings.push(`⚠️ **ERRO PREVISTO:** Com Advantage+ ativado, age_min=${ageMin} será REJEITADO pela API (erro 1870189). Use age_min=18 ou defina advantage_audience=0 para controle rígido de idade.`);
+    }
+  }
+  
   const result = await client.createAdSet({
     name: args.name,
     campaign_id: args.campaign_id,
     billing_event: args.billing_event,
     optimization_goal: args.optimization_goal,
-    targeting: args.targeting,
+    targeting,
     daily_budget: args.daily_budget,
     status: args.status,
     bid_strategy,
     bid_amount: args.bid_amount,
+    promoted_object: args.promoted_object,
+    start_time: args.start_time,
+    end_time: args.end_time,
+    attribution_spec: args.attribution_spec,
   });
+  
+  let successMessage = `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Bid Strategy:** ${bid_strategy}\n**Advantage+ Audience:** ${advantageAudience === 1 ? 'Ativado' : 'Desativado'}`;
+  
+  if (args.promoted_object) {
+    successMessage += `\n**Promoted Object:** ${JSON.stringify(args.promoted_object)}`;
+  }
+  
+  if (args.start_time || args.end_time) {
+    successMessage += `\n**Agendamento:** ${args.start_time || 'imediato'} até ${args.end_time || 'indefinido'}`;
+  }
+  
+  if (args.attribution_spec) {
+    successMessage += `\n**Attribution Spec:** ${JSON.stringify(args.attribution_spec)}`;
+  }
+  
+  if (warnings.length > 0) {
+    successMessage += `\n\n---\n\n${warnings.join('\n\n')}`;
+  }
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Bid Strategy:** ${bid_strategy}`,
+        text: successMessage,
       },
     ],
   };
@@ -2397,6 +2683,143 @@ async function handleGetReachEstimate(
       {
         type: 'text',
         text: `# Estimativa de Alcance\n\n**Alcance estimado:** ${result.data.users_lower_bound.toLocaleString()} - ${result.data.users_upper_bound.toLocaleString()} pessoas`,
+      },
+    ],
+  };
+}
+
+// ==================== PIXELS HANDLERS ====================
+
+async function handleListPixels(
+  client: MetaClient,
+  args: ListPixelsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listPixels(args.fields);
+  
+  if (result.data.length === 0) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Pixels da Conta\n\nNenhum pixel encontrado nesta conta.\n\n**Dica:** Crie um pixel no Facebook Business Manager ou Events Manager antes de criar ad sets com OFFSITE_CONVERSIONS.`,
+        },
+      ],
+    };
+  }
+  
+  const pixelsTable = result.data.map(pixel => {
+    const lastFired = pixel.last_fired_time 
+      ? new Date(pixel.last_fired_time).toLocaleString('pt-BR')
+      : 'Nunca';
+    return `| ${pixel.id} | ${pixel.name} | ${lastFired} |`;
+  }).join('\n');
+  
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Pixels da Conta
+
+Encontrados ${result.data.length} pixel(s):
+
+| ID | Nome | Último Disparo |
+|----|------|----------------|
+${pixelsTable}
+
+**Como usar no create_adset:**
+\`\`\`json
+{
+  "promoted_object": {
+    "pixel_id": "${result.data[0].id}",
+    "custom_event_type": "PURCHASE"
+  }
+}
+\`\`\``,
+      },
+    ],
+  };
+}
+
+// ==================== GEOLOCALIZAÇÃO HANDLERS ====================
+
+async function handleSearchGeolocation(
+  client: MetaClient,
+  args: SearchGeolocationArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.searchGeolocation({
+    q: args.q,
+    location_types: args.location_types,
+    country_code: args.country_code,
+    limit: args.limit,
+  });
+  
+  if (result.data.length === 0) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Busca de Localização
+
+Nenhuma localização encontrada para "${args.q}".
+
+**Dicas:**
+- Tente um termo mais genérico
+- Verifique a ortografia
+- Use location_types para filtrar (ex: ["region", "city"])
+- Use country_code para limitar a um país (ex: "BR")`,
+        },
+      ],
+    };
+  }
+  
+  const locationsTable = result.data.map(loc => {
+    const countryInfo = loc.country_code ? `${loc.country_name || loc.country_code}` : '-';
+    const regionInfo = loc.region || '-';
+    return `| ${loc.key} | ${loc.name} | ${loc.type} | ${countryInfo} | ${regionInfo} |`;
+  }).join('\n');
+  
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Busca de Localização: "${args.q}"
+
+Encontradas ${result.data.length} localização(ões):
+
+| Key | Nome | Tipo | País | Região |
+|-----|------|------|------|--------|
+${locationsTable}
+
+**Como usar no targeting do create_adset:**
+
+Para países:
+\`\`\`json
+{
+  "geo_locations": {
+    "countries": ["BR"]
+  }
+}
+\`\`\`
+
+Para estados/regiões:
+\`\`\`json
+{
+  "geo_locations": {
+    "regions": [{"key": "${result.data[0].key}"}]
+  }
+}
+\`\`\`
+
+Para cidades:
+\`\`\`json
+{
+  "geo_locations": {
+    "cities": [{"key": "${result.data[0].key}"}]
+  }
+}
+\`\`\`
+
+**IMPORTANTE:** Use o valor da coluna "Key", NÃO invente IDs!`,
       },
     ],
   };

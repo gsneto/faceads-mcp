@@ -107,14 +107,42 @@ export const createAdsetSchema = z.object({
     .describe('Evento de cobrança'),
   optimization_goal: z
     .enum([
+      // Alcance e impressões
       'REACH',
       'IMPRESSIONS',
+      'AD_RECALL_LIFT',
+      // Tráfego
       'LINK_CLICKS',
       'LANDING_PAGE_VIEWS',
-      'CONVERSIONS',
+      // Conversões (OFFSITE_CONVERSIONS é o correto, não CONVERSIONS)
+      'OFFSITE_CONVERSIONS',
       'VALUE',
-      'APP_INSTALLS',
+      // Engajamento
+      'ENGAGED_USERS',
+      'EVENT_RESPONSES',
+      'PAGE_LIKES',
+      'POST_ENGAGEMENT',
+      'THRUPLAY',
+      'VIDEO_VIEWS',
+      // Leads
       'LEAD_GENERATION',
+      'QUALITY_LEAD',
+      // Apps
+      'APP_INSTALLS',
+      'APP_INSTALLS_AND_OFFSITE_CONVERSIONS',
+      // Instagram/Mensagens
+      'VISIT_INSTAGRAM_PROFILE',
+      'PROFILE_VISIT',
+      'CONVERSATIONS',
+      'MESSAGING_PURCHASE_CONVERSION',
+      'MESSAGING_APPOINTMENT_CONVERSION',
+      // Outros
+      'IN_APP_VALUE',
+      'SUBSCRIBERS',
+      'REMINDERS_SET',
+      'MEANINGFUL_CALL_ATTEMPT',
+      'QUALITY_CALL',
+      'DERIVED_EVENTS',
     ])
     .describe('Objetivo de otimização'),
   targeting: z.record(z.string(), z.unknown()).describe('Especificação de targeting'),
@@ -128,6 +156,47 @@ export const createAdsetSchema = z.object({
     .positive()
     .optional()
     .describe('Valor do lance em centavos (obrigatório para BID_CAP e COST_CAP)'),
+  promoted_object: z
+    .object({
+      pixel_id: z.string().optional().describe('ID do pixel (obrigatório para OFFSITE_CONVERSIONS). Use list_pixels para obter.'),
+      custom_event_type: z.enum([
+        'PURCHASE', 'LEAD', 'COMPLETE_REGISTRATION', 'ADD_TO_CART',
+        'INITIATE_CHECKOUT', 'ADD_PAYMENT_INFO', 'SEARCH', 'CONTENT_VIEW',
+        'VIEW_CONTENT', 'ADD_TO_WISHLIST', 'CONTACT', 'CUSTOMIZE_PRODUCT',
+        'DONATE', 'FIND_LOCATION', 'SCHEDULE', 'SUBMIT_APPLICATION',
+        'START_TRIAL', 'SUBSCRIBE', 'OTHER',
+      ]).optional().describe('Tipo de evento de conversão'),
+      application_id: z.string().optional().describe('ID do app (obrigatório para APP_INSTALLS)'),
+      object_store_url: z.string().optional().describe('URL da app store'),
+      page_id: z.string().optional().describe('ID da página (obrigatório para PAGE_LIKES)'),
+      event_id: z.string().optional().describe('ID do evento'),
+      custom_conversion_id: z.string().optional().describe('ID de conversão customizada'),
+      offline_conversion_data_set_id: z.string().optional().describe('ID do dataset de conversão offline'),
+      product_set_id: z.string().optional().describe('ID do conjunto de produtos'),
+    })
+    .optional()
+    .describe('Objeto promovido. OBRIGATÓRIO para OFFSITE_CONVERSIONS (pixel_id + custom_event_type), APP_INSTALLS (application_id), PAGE_LIKES (page_id).'),
+  advantage_audience: z
+    .number()
+    .min(0)
+    .max(1)
+    .optional()
+    .describe('Público Advantage+ (0=desativado, 1=ativado). OBRIGATÓRIO na v24.0. Default: 1. ATENÇÃO: Com Advantage+ ativado (1), a API REJEITA age_max < 65 ou age_min > 18 (erro 1870189). Use 18-65 com Advantage+.'),
+  start_time: z
+    .string()
+    .optional()
+    .describe('Data/hora de início do ad set (formato ISO 8601, ex: "2026-02-10T00:00:00-0300")'),
+  end_time: z
+    .string()
+    .optional()
+    .describe('Data/hora de fim do ad set (formato ISO 8601, ex: "2026-02-28T23:59:59-0300")'),
+  attribution_spec: z
+    .array(z.object({
+      event_type: z.string().describe('Tipo de evento (ex: "CLICK_THROUGH", "VIEW_THROUGH")'),
+      window_days: z.number().describe('Dias da janela de atribuição (ex: 1, 7, 28)'),
+    }))
+    .optional()
+    .describe('Especificação de atribuição. Ex: [{"event_type": "CLICK_THROUGH", "window_days": 7}] para 7d click only.'),
 });
 
 export const updateAdsetSchema = z.object({
@@ -403,6 +472,35 @@ export const getReachEstimateSchema = z.object({
   targeting_spec: z.record(z.string(), z.unknown()).describe('Especificação de targeting'),
 });
 
+// ==================== PIXELS ====================
+
+export const listPixelsSchema = z.object({
+  fields: z
+    .array(z.string())
+    .optional()
+    .describe('Campos a retornar (default: id, name, last_fired_time, is_created_by_business)'),
+});
+
+// ==================== GEOLOCALIZAÇÃO ====================
+
+export const searchGeolocationSchema = z.object({
+  q: z.string().min(1).describe('Termo de busca (ex: "São Paulo", "Brasil", "California")'),
+  location_types: z
+    .array(z.enum(['country', 'region', 'city', 'zip', 'geo_market', 'electoral_district']))
+    .optional()
+    .describe('Tipos de localização para filtrar (default: todos). Ex: ["region", "city"]'),
+  country_code: z
+    .string()
+    .optional()
+    .describe('Código do país para filtrar (ex: "BR", "US")'),
+  limit: z
+    .number()
+    .min(1)
+    .max(100)
+    .optional()
+    .describe('Número máximo de resultados (default: 25)'),
+});
+
 // ==================== API CUSTOMIZADA ====================
 
 export const executeApiSchema = z.object({
@@ -457,6 +555,12 @@ export type ListCustomAudiencesArgs = z.infer<typeof listCustomAudiencesSchema>;
 export type CreateCustomAudienceArgs = z.infer<typeof createCustomAudienceSchema>;
 export type GetReachEstimateArgs = z.infer<typeof getReachEstimateSchema>;
 
+// Pixels
+export type ListPixelsArgs = z.infer<typeof listPixelsSchema>;
+
+// Geolocalização
+export type SearchGeolocationArgs = z.infer<typeof searchGeolocationSchema>;
+
 export type ExecuteApiArgs = z.infer<typeof executeApiSchema>;
 
 // ==================== SCHEMA MAP ====================
@@ -504,6 +608,10 @@ export const apiSchemas = {
   list_custom_audiences: listCustomAudiencesSchema,
   create_custom_audience: createCustomAudienceSchema,
   get_reach_estimate: getReachEstimateSchema,
+  // Pixels
+  list_pixels: listPixelsSchema,
+  // Geolocalização
+  search_geolocation: searchGeolocationSchema,
   // API Customizada
   execute_api: executeApiSchema,
 } as const;

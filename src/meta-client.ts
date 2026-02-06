@@ -421,6 +421,21 @@ export class MetaClient {
     status?: string;
     start_time?: string;
     end_time?: string;
+    promoted_object?: {
+      pixel_id?: string;
+      custom_event_type?: string;
+      application_id?: string;
+      object_store_url?: string;
+      page_id?: string;
+      event_id?: string;
+      custom_conversion_id?: string;
+      offline_conversion_data_set_id?: string;
+      product_set_id?: string;
+    };
+    attribution_spec?: Array<{
+      event_type: string;
+      window_days: number;
+    }>;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, {
       ...params,
@@ -656,6 +671,69 @@ export class MetaClient {
       targeting_spec: JSON.stringify(params.targeting_spec),
       ...(params.optimize_for && { optimize_for: params.optimize_for }),
     });
+  }
+
+  // ==================== PIXELS ====================
+
+  /**
+   * Lista pixels da conta de anúncios
+   * Essencial para obter pixel_id ao criar ad sets com OFFSITE_CONVERSIONS
+   */
+  async listPixels(
+    fields: string[] = ['id', 'name', 'last_fired_time', 'is_created_by_business']
+  ): Promise<{ data: Array<{ id: string; name: string; last_fired_time?: string; [key: string]: unknown }> }> {
+    return this.get<{ data: Array<{ id: string; name: string; last_fired_time?: string; [key: string]: unknown }> }>(
+      `${this.config.adAccountId}/adspixels`,
+      { fields: fields.join(',') }
+    );
+  }
+
+  // ==================== GEOLOCALIZAÇÃO ====================
+
+  /**
+   * Busca localizações para targeting
+   * IMPORTANTE: Use esta tool para obter os keys corretos de localização!
+   * Keys são específicos do Meta e não correspondem a IDs geográficos padrão.
+   */
+  async searchGeolocation(params: {
+    q: string;
+    location_types?: string[];
+    country_code?: string;
+    limit?: number;
+  }): Promise<{
+    data: Array<{
+      key: string;
+      name: string;
+      type: string;
+      country_code?: string;
+      country_name?: string;
+      region?: string;
+      region_id?: number;
+      primary_city?: string;
+      primary_city_id?: number;
+      supports_city?: boolean;
+      supports_region?: boolean;
+      [key: string]: unknown;
+    }>;
+  }> {
+    const queryParams: Record<string, string> = {
+      q: params.q,
+      type: 'adgeolocation',
+    };
+
+    if (params.location_types && params.location_types.length > 0) {
+      queryParams.location_types = JSON.stringify(params.location_types);
+    }
+
+    if (params.country_code) {
+      queryParams.country_code = params.country_code;
+    }
+
+    if (params.limit) {
+      queryParams.limit = String(params.limit);
+    }
+
+    return this.get('search', queryParams);
   }
 }
 

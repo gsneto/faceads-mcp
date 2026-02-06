@@ -66,8 +66,10 @@ Este MCP (Model Context Protocol) permite que IAs:
 
 ### Tools de Execução (requerem API key)
 
-#### Descoberta
+#### Descoberta e Utilitários
 - `discover_ad_accounts`, `list_facebook_pages`, `get_instagram_account`
+- `list_pixels` - **NOVO** - Lista pixels da conta (necessário para conversões)
+- `search_geolocation` - **NOVO** - Busca keys de localização para targeting
 
 #### Campanhas
 - `list_campaigns` (suporta `effective_status` filtering), `get_campaign`
@@ -141,6 +143,19 @@ IA: [Usa get_account_insights com date_preset: "last_7d"]
 Usuário: Crie uma campanha de tráfego
 IA: [Usa create_campaign com objective: "OUTCOME_TRAFFIC"]
 ```
+
+### Fluxo completo para campanhas de conversões
+
+```
+1. create_campaign (objective: "OUTCOME_SALES")
+2. list_pixels → obter pixel_id
+3. search_geolocation → obter keys de localização corretos
+4. create_adset (com promoted_object, targeting, advantage_audience)
+5. create_creative
+6. create_ad
+```
+
+> **Importante (v24.0):** Ad sets com `advantage_audience=1` (padrão) requerem `age_min=18` e `age_max=65`. Para controle rígido de idade, use `advantage_audience=0`.
 
 ## Desenvolvimento
 
