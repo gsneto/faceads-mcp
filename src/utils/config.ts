@@ -3,11 +3,51 @@
  * para a camada de execução (API Meta)
  */
 
+import * as fs from 'fs';
+import * as path from 'path';
+import { fileURLToPath } from 'url';
+
 export interface MetaConfig {
   accessToken: string;
   adAccountId: string;
   apiVersion: string;
 }
+
+/**
+ * Carrega variáveis de um arquivo .env (fallback quando process.env não tem as variáveis)
+ */
+function loadDotEnv(): void {
+  // Só carrega se as variáveis não existirem
+  if (process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID) {
+    return;
+  }
+
+  // Procura .env na raiz do projeto
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  const envPath = path.resolve(__dirname, '..', '..', '.env');
+
+  try {
+    if (!fs.existsSync(envPath)) return;
+    const content = fs.readFileSync(envPath, 'utf-8');
+    for (const line of content.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIndex = trimmed.indexOf('=');
+      if (eqIndex === -1) continue;
+      const key = trimmed.slice(0, eqIndex).trim();
+      const value = trimmed.slice(eqIndex + 1).trim();
+      if (!process.env[key]) {
+        process.env[key] = value;
+      }
+    }
+  } catch {
+    // Silently ignore .env loading errors
+  }
+}
+
+// Carrega .env ao importar o módulo
+loadDotEnv();
 
 /**
  * Obtém a configuração da API Meta das variáveis de ambiente
