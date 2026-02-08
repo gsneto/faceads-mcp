@@ -345,6 +345,7 @@ export class MetaClient {
     special_ad_categories?: string[];
     daily_budget?: number;
     lifetime_budget?: number;
+    bid_strategy?: string;
     is_adset_budget_sharing_enabled?: boolean;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/campaigns`, {
@@ -400,7 +401,7 @@ export class MetaClient {
    */
   async getAdSet(
     adsetId: string,
-    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget', 'targeting']
+    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget', 'targeting', 'is_incremental_attribution_enabled', 'attribution_spec']
   ): Promise<AdSet> {
     return this.get<AdSet>(adsetId, { fields: fields.join(',') });
   }
@@ -436,6 +437,8 @@ export class MetaClient {
       event_type: string;
       window_days: number;
     }>;
+    is_incremental_attribution_enabled?: boolean;
+    excluded_custom_audiences?: Array<{ id: string }>;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, {
       ...params,
@@ -547,8 +550,66 @@ export class MetaClient {
     object_story_spec?: object;
     asset_feed_spec?: object;
     degrees_of_freedom_spec?: object;
+    creative_features_spec?: object;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/adcreatives`, params);
+  }
+
+  // ==================== UPLOAD DE IMAGEM ====================
+
+  /**
+   * Faz upload de uma imagem via URL para a conta de anúncios.
+   * Fluxo: download da URL → conversão para base64 → POST com parâmetro 'bytes'.
+   * A API da Meta aceita APENAS 'bytes' (base64) ou 'copy_from', NÃO aceita URL direta.
+   */
+  async uploadImageFromUrl(imageUrl: string): Promise<unknown> {
+    // 1. Download da imagem
+    let imageResponse: Response;
+    try {
+      imageResponse = await fetch(imageUrl);
+    } catch (networkError) {
+      throw new MetaClientError({
+        message: `Erro ao baixar imagem da URL: ${networkError instanceof Error ? networkError.message : String(networkError)}`,
+        type: 'NetworkError',
+        code: -1,
+      });
+    }
+
+    if (!imageResponse.ok) {
+      throw new MetaClientError({
+        message: `Erro ao baixar imagem: HTTP ${imageResponse.status} ${imageResponse.statusText}. Verifique se a URL é acessível publicamente.`,
+        type: 'ImageDownloadError',
+        code: imageResponse.status,
+      });
+    }
+
+    // 2. Converter para base64
+    const arrayBuffer = await imageResponse.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuffer).toString('base64');
+
+    if (base64Data.length === 0) {
+      throw new MetaClientError({
+        message: 'Imagem vazia após download. Verifique a URL.',
+        type: 'ImageDownloadError',
+        code: -1,
+      });
+    }
+
+    // 3. Enviar como 'bytes' (parâmetro correto da API Meta)
+    return this.post(`${this.config.adAccountId}/adimages`, {
+      bytes: base64Data,
+    });
+  }
+
+  // ==================== DATASET QUALITY (EMQ) ====================
+
+  /**
+   * Consulta a qualidade do dataset (EMQ) de um pixel.
+   */
+  async getDatasetQuality(pixelId: string): Promise<unknown> {
+    return this.get(`dataset_quality`, {
+      dataset_id: pixelId,
+    });
   }
 
   // ==================== INSIGHTS ====================

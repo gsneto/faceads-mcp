@@ -62,6 +62,10 @@ export const createCampaignSchema = z.object({
     .describe('Objetivo da campanha'),
   status: z.enum(['PAUSED', 'ACTIVE']).default('PAUSED').describe('Status inicial (default: PAUSED)'),
   daily_budget: z.number().positive().optional().describe('Orçamento diário em centavos (para CBO)'),
+  bid_strategy: z
+    .enum(['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'])
+    .optional()
+    .describe('Estratégia de lance para CBO. Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP automaticamente.'),
   special_ad_categories: z
     .array(z.enum(['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS']))
     .optional()
@@ -197,6 +201,16 @@ export const createAdsetSchema = z.object({
     }))
     .optional()
     .describe('Especificação de atribuição. Ex: [{"event_type": "CLICK_THROUGH", "window_days": 7}] para 7d click only.'),
+  is_incremental_attribution_enabled: z
+    .boolean()
+    .optional()
+    .describe('Habilitar atribuição incremental. Quando true, o algoritmo otimiza para conversões CAUSADAS pelo anúncio, não apenas correlacionadas. Recurso-chave do Andromeda para contas com alto volume orgânico.'),
+  excluded_custom_audiences: z
+    .array(z.object({
+      id: z.string().describe('ID da custom audience a excluir'),
+    }))
+    .optional()
+    .describe('Custom audiences para excluir do targeting. Campo TOP-LEVEL (NÃO dentro de targeting.exclusions). A partir da v24.0, targeting.exclusions.custom_audiences foi depreciado.'),
 });
 
 export const updateAdsetSchema = z.object({
@@ -212,7 +226,7 @@ export const getAdsetSchema = z.object({
   fields: z
     .array(z.string())
     .optional()
-    .describe('Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting)'),
+    .describe('Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting, is_incremental_attribution_enabled, attribution_spec). NOTA: excluded_custom_audiences é write-only e não pode ser lido via GET.'),
 });
 
 export const pauseAdsetSchema = z.object({
@@ -307,9 +321,25 @@ const objectStorySpecSchema = z.object({
   photo_data: z.record(z.string(), z.unknown()).optional(),
 }).passthrough();
 
+// Schema para creative_features_spec (Advantage+ Creative)
+const creativeFeatureSchema = z.object({
+  enroll_status: z.enum(['OPT_IN', 'OPT_OUT']).describe('Status de ativação da feature'),
+}).passthrough();
+
 export const createCreativeSchema = z.object({
   name: z.string().min(1).describe('Nome do criativo'),
   object_story_spec: objectStorySpecSchema.optional().describe('Especificação do criativo'),
+  creative_features_spec: z.object({
+    image_touchups: creativeFeatureSchema.optional().describe('Auto crop/expand para placements'),
+    image_background_gen: creativeFeatureSchema.optional().describe('Backgrounds gerados por IA'),
+    image_templates: creativeFeatureSchema.optional().describe('Overlays de texto gerados por IA'),
+    text_optimizations: creativeFeatureSchema.optional().describe('Texto dinâmico otimizado'),
+    enhance_cta: creativeFeatureSchema.optional().describe('CTA aprimorado'),
+    image_uncrop: creativeFeatureSchema.optional().describe('Expansão de imagem por IA'),
+    video_auto_crop: creativeFeatureSchema.optional().describe('Vídeo auto crop/expand'),
+    media_type_automation: creativeFeatureSchema.optional().describe('Mídia dinâmica (vídeo/imagens)'),
+    description_automation: creativeFeatureSchema.optional().describe('Descrições dinâmicas'),
+  }).passthrough().optional().describe('Advantage+ Creative features. Configure para habilitar otimizações de IA nos criativos.'),
 });
 
 // ==================== SCHEMAS DE INSIGHTS ====================
@@ -558,6 +588,18 @@ export type GetReachEstimateArgs = z.infer<typeof getReachEstimateSchema>;
 // Pixels
 export type ListPixelsArgs = z.infer<typeof listPixelsSchema>;
 
+// Upload de Imagem
+export const uploadImageSchema = z.object({
+  image_url: z.string().url().describe('URL da imagem para upload. A imagem será baixada e enviada para a conta de anúncios.'),
+});
+export type UploadImageArgs = z.infer<typeof uploadImageSchema>;
+
+// Dataset Quality (EMQ)
+export const getDatasetQualitySchema = z.object({
+  pixel_id: z.string().min(1).describe('ID do pixel/dataset para verificar qualidade. Use list_pixels para obter.'),
+});
+export type GetDatasetQualityArgs = z.infer<typeof getDatasetQualitySchema>;
+
 // Geolocalização
 export type SearchGeolocationArgs = z.infer<typeof searchGeolocationSchema>;
 
@@ -618,6 +660,10 @@ export const apiSchemas = {
   get_reach_estimate: getReachEstimateSchema,
   // Pixels
   list_pixels: listPixelsSchema,
+  // Upload de Imagem
+  upload_image: uploadImageSchema,
+  // Dataset Quality (EMQ)
+  get_dataset_quality: getDatasetQualitySchema,
   // Geolocalização
   search_geolocation: searchGeolocationSchema,
   // API Customizada

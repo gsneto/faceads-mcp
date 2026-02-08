@@ -58,6 +58,10 @@ import {
   type GetReachEstimateArgs,
   // Pixels
   type ListPixelsArgs,
+  // Upload de Imagem
+  type UploadImageArgs,
+  // Dataset Quality (EMQ)
+  type GetDatasetQualityArgs,
   // Geolocalização
   type SearchGeolocationArgs,
   // API Customizada
@@ -187,7 +191,11 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
 - Para CBO (Campaign Budget Optimization): defina daily_budget na campanha
 - Para ABO (Ad Set Budget): defina daily_budget nos ad sets individuais
 
-O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.`,
+O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
+
+**BID STRATEGY (CBO):**
+- Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP automaticamente
+- Para usar BID_CAP ou COST_CAP, defina bid_strategy explicitamente`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -203,6 +211,11 @@ O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
           type: 'array',
           items: { type: 'string', enum: ['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS'] },
           description: 'Categorias especiais de anúncios',
+        },
+        bid_strategy: {
+          type: 'string',
+          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'],
+          description: 'Estratégia de lance para CBO. Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP automaticamente.',
         },
         is_adset_budget_sharing_enabled: {
           type: 'boolean',
@@ -276,7 +289,7 @@ DICA: Use effective_status para economizar tokens.`,
   },
   {
     name: 'get_adset',
-    description: 'Obtém detalhes de um conjunto de anúncios específico, incluindo targeting e orçamento.',
+    description: 'Obtém detalhes de um conjunto de anúncios específico, incluindo targeting, orçamento, atribuição incremental e audiências excluídas.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -284,7 +297,7 @@ DICA: Use effective_status para economizar tokens.`,
         fields: {
           type: 'array',
           items: { type: 'string' },
-          description: 'Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting)',
+          description: 'Campos a retornar (default: id, name, status, campaign_id, daily_budget, targeting, is_incremental_attribution_enabled, attribution_spec). NOTA: excluded_custom_audiences é write-only.',
         },
       },
       required: ['adset_id'],
@@ -335,13 +348,26 @@ Exemplo correto: key 460 = São Paulo, BR
 }
 \`\`\`
 
-**Orçamento mínimo Brasil:** R$5,33 (533 centavos). Use 600+ para garantir.`,
+**Orçamento mínimo Brasil:** R$5,33 (533 centavos). Use 600+ para garantir.
+
+**ORÇAMENTO CBO vs ABO (CRÍTICO):**
+- Se a campanha pai tem daily_budget (é CBO): o ad set NÃO pode ter daily_budget próprio
+- Se a campanha pai NÃO tem budget (é ABO): o ad set DEVE ter daily_budget
+- Verificar com \`get_campaign\` se a campanha pai é CBO ou ABO antes de definir budget
+
+**ATRIBUIÇÃO INCREMENTAL (Andromeda):**
+- \`is_incremental_attribution_enabled: true\` otimiza para conversões CAUSADAS pelo anúncio
+- Recurso crítico para contas com alto volume orgânico
+
+**EXCLUSÃO DE AUDIÊNCIAS (v24.0):**
+- Use \`excluded_custom_audiences\` no nível raiz (NÃO \`targeting.exclusions.custom_audiences\`)
+- Exemplo: \`"excluded_custom_audiences": [{"id": "120210539323310649"}]\``,
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Nome do ad set' },
         campaign_id: { type: 'string', description: 'ID da campanha pai' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil, recomendado 600+)' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil). ATENÇÃO: NÃO defina se a campanha pai é CBO (tem budget próprio). Obrigatório se campanha é ABO.' },
         billing_event: {
           type: 'string',
           enum: ['IMPRESSIONS', 'LINK_CLICKS', 'APP_INSTALLS', 'PAGE_LIKES', 'POST_ENGAGEMENT', 'VIDEO_VIEWS'],
@@ -419,6 +445,20 @@ Exemplo correto: key 460 = São Paulo, BR
               window_days: { type: 'number', description: 'Dias da janela de atribuição (ex: 1, 7, 28)' },
             },
           },
+        },
+        is_incremental_attribution_enabled: {
+          type: 'boolean',
+          description: 'Habilitar atribuição incremental. Quando true, o algoritmo otimiza para conversões CAUSADAS pelo anúncio (não apenas correlacionadas). Recurso-chave do Andromeda.',
+        },
+        excluded_custom_audiences: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string', description: 'ID da custom audience' },
+            },
+          },
+          description: 'Custom audiences para excluir do targeting. Campo TOP-LEVEL (NÃO dentro de targeting.exclusions, que foi depreciado na v24.0).',
         },
       },
       required: ['name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
@@ -611,7 +651,20 @@ Exemplo correto: key 460 = São Paulo, BR
 
 **CTAs disponíveis:** LEARN_MORE, SHOP_NOW, SIGN_UP, BOOK_TRAVEL, CONTACT_US, DOWNLOAD, GET_QUOTE, APPLY_NOW, SUBSCRIBE, WATCH_MORE
 
-**Dica:** Use list_facebook_pages para obter page_id e get_instagram_account para obter instagram_user_id.`,
+**Dica:** Use list_facebook_pages para obter page_id e get_instagram_account para obter instagram_user_id.
+
+**ADVANTAGE+ CREATIVE (Andromeda):**
+Use \`creative_features_spec\` para habilitar otimizações de IA:
+\`\`\`json
+{
+  "creative_features_spec": {
+    "image_touchups": {"enroll_status": "OPT_IN"},
+    "text_optimizations": {"enroll_status": "OPT_IN"},
+    "enhance_cta": {"enroll_status": "OPT_IN"},
+    "image_uncrop": {"enroll_status": "OPT_IN"}
+  }
+}
+\`\`\``,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -638,6 +691,21 @@ Exemplo correto: key 460 = São Paulo, BR
                 },
               },
             },
+          },
+        },
+        creative_features_spec: {
+          type: 'object',
+          description: 'Advantage+ Creative features para otimizações de IA. Cada feature aceita {"enroll_status": "OPT_IN"} ou {"enroll_status": "OPT_OUT"}.',
+          properties: {
+            image_touchups: { type: 'object', description: 'Auto crop/expand para placements' },
+            image_background_gen: { type: 'object', description: 'Backgrounds gerados por IA' },
+            image_templates: { type: 'object', description: 'Overlays de texto gerados por IA' },
+            text_optimizations: { type: 'object', description: 'Texto dinâmico otimizado' },
+            enhance_cta: { type: 'object', description: 'CTA aprimorado' },
+            image_uncrop: { type: 'object', description: 'Expansão de imagem por IA' },
+            video_auto_crop: { type: 'object', description: 'Vídeo auto crop/expand' },
+            media_type_automation: { type: 'object', description: 'Mídia dinâmica (vídeo/imagens)' },
+            description_automation: { type: 'object', description: 'Descrições dinâmicas' },
           },
         },
       },
@@ -1084,6 +1152,70 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     },
   },
 
+  // ==================== UPLOAD DE IMAGEM ====================
+  {
+    name: 'upload_image',
+    description: `Faz upload de uma imagem para a conta de anúncios e retorna o image_hash.
+
+**QUANDO USAR:**
+- Antes de criar criativos que precisam de imagem
+- O image_hash retornado deve ser usado em link_data.image_hash do object_story_spec
+
+**RETORNA:**
+- image_hash: Hash da imagem (usar em criativos)
+- url: URL da imagem no Meta
+
+**EXEMPLO DE USO:**
+1. upload_image(image_url: "https://exemplo.com/imagem.jpg")
+2. Usar image_hash no create_creative:
+\`\`\`json
+{
+  "object_story_spec": {
+    "page_id": "ID",
+    "link_data": {
+      "image_hash": "HASH_RETORNADO",
+      "link": "https://seu-site.com"
+    }
+  }
+}
+\`\`\``,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        image_url: { type: 'string', description: 'URL da imagem para upload' },
+      },
+      required: ['image_url'],
+    },
+  },
+
+  // ==================== DATASET QUALITY (EMQ) ====================
+  {
+    name: 'get_dataset_quality',
+    description: `Verifica a qualidade do dataset (Event Match Quality - EMQ) de um pixel.
+
+**QUANDO USAR:**
+- Verificar saúde da implementação CAPI (Conversions API)
+- Auditar qualidade dos eventos antes de campanhas Andromeda
+- Target: EMQ >= 6.0 para otimização eficiente
+
+**RETORNA:**
+- EMQ score por evento
+- Event coverage (% de eventos cobertos pela CAPI)
+- Feedback sobre deduplicação
+- Freshness dos dados
+
+**REFERÊNCIA ANDROMEDA:**
+- EMQ >= 6.0 é requisito mínimo para Andromeda funcionar bem
+- Event coverage >= 75% é recomendado`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        pixel_id: { type: 'string', description: 'ID do pixel/dataset. Use list_pixels para obter.' },
+      },
+      required: ['pixel_id'],
+    },
+  },
+
   // ==================== GEOLOCALIZAÇÃO ====================
   {
     name: 'search_geolocation',
@@ -1506,6 +1638,20 @@ export async function handleApiTool(
         return await handleListPixels(client, validation.data);
       }
 
+      // ==================== UPLOAD DE IMAGEM ====================
+      case 'upload_image': {
+        const validation = validateArgs(apiSchemas.upload_image, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleUploadImage(client, validation.data);
+      }
+
+      // ==================== DATASET QUALITY (EMQ) ====================
+      case 'get_dataset_quality': {
+        const validation = validateArgs(apiSchemas.get_dataset_quality, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetDatasetQuality(client, validation.data);
+      }
+
       // ==================== GEOLOCALIZAÇÃO ====================
       case 'search_geolocation': {
         const validation = validateArgs(apiSchemas.search_geolocation, args);
@@ -1760,19 +1906,34 @@ async function handleCreateCampaign(
   // Sempre incluir is_adset_budget_sharing_enabled para evitar erro 4834011
   const is_adset_budget_sharing_enabled = args.is_adset_budget_sharing_enabled ?? false;
   
+  // G-04: Default inteligente para bid_strategy em campanhas CBO
+  // Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP
+  // para evitar que o Meta infira LOWEST_COST_WITH_BID_CAP (erro 1815857)
+  const bid_strategy = args.bid_strategy ?? (args.daily_budget ? 'LOWEST_COST_WITHOUT_CAP' : undefined);
+  
   const result = await client.createCampaign({
     name: args.name,
     objective: args.objective,
     status: args.status,
     daily_budget: args.daily_budget,
+    bid_strategy,
     special_ad_categories: args.special_ad_categories,
     is_adset_budget_sharing_enabled,
   });
+  
+  let successMessage = `# Campanha Criada\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Objetivo:** ${args.objective}\n**Status:** ${args.status}\n**Budget Sharing:** ${is_adset_budget_sharing_enabled}`;
+  if (bid_strategy) {
+    successMessage += `\n**Bid Strategy:** ${bid_strategy}`;
+  }
+  if (args.daily_budget) {
+    successMessage += `\n**Daily Budget:** R$ ${(args.daily_budget / 100).toFixed(2)}`;
+  }
+  
   return {
     content: [
       {
         type: 'text',
-        text: `# Campanha Criada\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Objetivo:** ${args.objective}\n**Status:** ${args.status}\n**Budget Sharing:** ${is_adset_budget_sharing_enabled}`,
+        text: successMessage,
       },
     ],
   };
@@ -1928,9 +2089,19 @@ async function handleCreateAdset(
     start_time: args.start_time,
     end_time: args.end_time,
     attribution_spec: args.attribution_spec,
+    is_incremental_attribution_enabled: args.is_incremental_attribution_enabled,
+    excluded_custom_audiences: args.excluded_custom_audiences,
   });
   
   let successMessage = `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Bid Strategy:** ${bid_strategy}\n**Advantage+ Audience:** ${advantageAudience === 1 ? 'Ativado' : 'Desativado'}`;
+  
+  if (args.is_incremental_attribution_enabled !== undefined) {
+    successMessage += `\n**Atribuição Incremental:** ${args.is_incremental_attribution_enabled ? 'Ativada' : 'Desativada'}`;
+  }
+  
+  if (args.excluded_custom_audiences && args.excluded_custom_audiences.length > 0) {
+    successMessage += `\n**Audiências Excluídas:** ${args.excluded_custom_audiences.length} audiência(s)`;
+  }
   
   if (args.promoted_object) {
     successMessage += `\n**Promoted Object:** ${JSON.stringify(args.promoted_object)}`;
@@ -2206,6 +2377,7 @@ O campo \`page_id\` é obrigatório no \`object_story_spec\`.
   const result = await client.createCreative({
     name: args.name,
     object_story_spec: args.object_story_spec,
+    creative_features_spec: args.creative_features_spec,
   });
   
   let successMessage = `# Criativo Criado
@@ -2216,6 +2388,11 @@ O campo \`page_id\` é obrigatório no \`object_story_spec\`.
 
   if (spec.instagram_user_id) {
     successMessage += `\n**Instagram ID:** ${spec.instagram_user_id}`;
+  }
+
+  if (args.creative_features_spec) {
+    const features = Object.keys(args.creative_features_spec);
+    successMessage += `\n**Advantage+ Creative:** ${features.length} feature(s) configurada(s) (${features.join(', ')})`;
   }
 
   successMessage += `\n\n**Próximo passo:** Use este creative_id ao criar um anúncio com \`create_ad\`.`;
@@ -2818,6 +2995,133 @@ ${pixelsTable}
       },
     ],
   };
+}
+
+// ==================== UPLOAD DE IMAGEM HANDLERS ====================
+
+async function handleUploadImage(
+  client: MetaClient,
+  args: UploadImageArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    const result = await client.uploadImageFromUrl(args.image_url);
+    
+    // A resposta do Meta vem como { images: { bytes: { hash, url, ... } } }
+    const images = (result as Record<string, unknown>).images as Record<string, Record<string, string>> | undefined;
+    
+    if (images) {
+      const firstKey = Object.keys(images)[0];
+      const imageData = images[firstKey];
+      
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `# Imagem Uploaded com Sucesso
+
+**Image Hash:** ${imageData.hash}
+**URL:** ${imageData.url || 'N/A'}
+
+**Como usar no create_creative:**
+\`\`\`json
+{
+  "object_story_spec": {
+    "page_id": "ID_DA_PAGINA",
+    "link_data": {
+      "image_hash": "${imageData.hash}",
+      "link": "https://seu-site.com",
+      "message": "Texto do post"
+    }
+  }
+}
+\`\`\``,
+          },
+        ],
+      };
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Upload de Imagem\n\n**Resultado:**\n${formatObject(result as Record<string, unknown>)}`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro no Upload de Imagem\n\n${error instanceof Error ? error.message : String(error)}\n\n**Possíveis causas:**\n- URL não é acessível publicamente\n- URL não aponta para uma imagem válida (JPG, PNG)\n- Imagem muito grande (limite: ~4MB para base64)\n- Formato de imagem não suportado\n\n**Dica:** A imagem é baixada e convertida para base64 antes do upload. Certifique-se de que a URL retorna o arquivo de imagem diretamente.`,
+        },
+      ],
+    };
+  }
+}
+
+// ==================== DATASET QUALITY (EMQ) HANDLERS ====================
+
+async function handleGetDatasetQuality(
+  client: MetaClient,
+  args: GetDatasetQualityArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  try {
+    const result = await client.getDatasetQuality(args.pixel_id);
+    const resultObj = result as Record<string, unknown>;
+    
+    // Verificar se a resposta está vazia ou sem dados úteis
+    const hasData = resultObj && Object.keys(resultObj).length > 0 && 
+      !(Object.keys(resultObj).length === 1 && resultObj.id);
+    
+    if (!hasData) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `# Dataset Quality (EMQ)
+
+**Pixel/Dataset ID:** ${args.pixel_id}
+
+**Nenhum dado de qualidade disponível para este pixel.**
+
+Possíveis causas:
+- Pixel sem implementação Conversions API (CAPI) — EMQ requer eventos server-side
+- Dados EMQ ainda não processados (pode levar até 48h após implementação)
+- Pixel com volume insuficiente de eventos
+- Pixel configurado apenas com browser-side tracking (sem CAPI)
+
+**Próximos passos:**
+1. Verifique se a CAPI está implementada: \`execute_api(endpoint="{pixel_id}/events", method="GET")\`
+2. Implemente a CAPI seguindo: \`get_document_by_path(path="conversions-api/get-started/index.md")\`
+3. Após implementar, aguarde 48h e consulte novamente
+
+**Referência Andromeda:**
+- EMQ >= 6.0: Requisito mínimo para Andromeda funcionar bem
+- Event Coverage >= 75%: Recomendado para otimização eficiente`,
+          },
+        ],
+      };
+    }
+    
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Dataset Quality (EMQ)\n\n**Pixel/Dataset ID:** ${args.pixel_id}\n\n${formatObject(resultObj)}\n\n**Referência Andromeda:**\n- EMQ >= 6.0: Bom para otimização\n- EMQ < 6.0: Requer melhorias na implementação CAPI\n- Event Coverage >= 75%: Recomendado`,
+        },
+      ],
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Erro ao Consultar Dataset Quality\n\n${error instanceof Error ? error.message : String(error)}\n\n**Dica:** Verifique se o pixel_id está correto. Use \`list_pixels\` para obter IDs disponíveis.`,
+        },
+      ],
+    };
+  }
 }
 
 // ==================== GEOLOCALIZAÇÃO HANDLERS ====================

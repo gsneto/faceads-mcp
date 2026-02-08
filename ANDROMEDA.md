@@ -126,11 +126,13 @@ O sistema Advantage+ Creative permite que a Meta gere variacoes automaticamente 
 
 **Referencia:** [docs/creative/advantage-creative/get-started.md](docs/creative/advantage-creative/get-started.md)
 
-Ao criar criativos com `create_creative`, configure `creative_features_spec` para habilitar otimizacoes de IA:
+Ao criar criativos com `create_creative`, use o parametro nativo `creative_features_spec` para habilitar otimizacoes de IA:
 
-```json
-{
-  "creative_features_spec": {
+```
+create_creative(
+  name: "Criativo Andromeda",
+  object_story_spec: { ... },
+  creative_features_spec: {
     "image_touchups": { "enroll_status": "OPT_IN" },
     "image_background_gen": { "enroll_status": "OPT_IN" },
     "text_optimizations": { "enroll_status": "OPT_IN" },
@@ -138,8 +140,10 @@ Ao criar criativos com `create_creative`, configure `creative_features_spec` par
     "image_uncrop": { "enroll_status": "OPT_IN" },
     "video_auto_crop": { "enroll_status": "OPT_IN" }
   }
-}
+)
 ```
+
+> **NOTA:** `creative_features_spec` e um parametro nativo do `create_creative`. Nao e necessario usar `execute_api`.
 
 **Features disponiveis:**
 
@@ -261,16 +265,30 @@ O parametro `advantage_audience` controla se a Meta otimiza o publico automatica
 
 Para proteger aquisicao de novos clientes, crie listas de exclusao:
 
+> **IMPORTANTE (v24.0):** Custom audience exclusions devem usar `excluded_custom_audiences` no nivel RAIZ do ad set.
+> O campo `targeting.exclusions.custom_audiences` foi **depreciado** e retorna erro 1870221.
+
 ```
 1. create_custom_audience (lista de clientes existentes)
-2. create_adset com exclusao no targeting:
+2. create_adset com excluded_custom_audiences (campo top-level, NAO dentro de targeting):
    {
-     "targeting": {
-       "exclusions": {
-         "custom_audiences": [{"id": "audience_id"}]
-       }
-     }
+     "excluded_custom_audiences": [{"id": "audience_id"}]
    }
+```
+
+**Exemplo completo:**
+```
+create_adset(
+  name: "Ad Set Andromeda",
+  campaign_id: "{id}",
+  excluded_custom_audiences: [{"id": "120210539323310649"}],
+  targeting: {
+    "geo_locations": {"countries": ["BR"]},
+    "age_min": 18,
+    "age_max": 65
+  },
+  ...
+)
 ```
 
 #### Advantage+ Campaigns (Estrutura Unificada)
@@ -436,16 +454,19 @@ Para mitigar Hot Ad Bias e permitir testes estruturados:
 
 Ao criar campanha CBO com `create_campaign`:
 
-```json
-{
-  "name": "[SCALE] - Sales - Broad - 2026-02",
-  "objective": "OUTCOME_SALES",
-  "status": "PAUSED",
-  "special_ad_categories": [],
-  "daily_budget": 20000,
-  "bid_strategy": "LOWEST_COST_WITHOUT_CAP"
-}
 ```
+create_campaign(
+  name: "[SCALE] - Sales - Broad - 2026-02",
+  objective: "OUTCOME_SALES",
+  status: "PAUSED",
+  daily_budget: 20000,
+  bid_strategy: "LOWEST_COST_WITHOUT_CAP"
+)
+```
+
+> **AVISO:** Sempre defina `bid_strategy` explicitamente ao usar CBO com `daily_budget`.
+> Sem definir, o Meta pode inferir `LOWEST_COST_WITH_BID_CAP`, causando erro 1815857
+> ("bid_amount is required for bid cap strategy") na criacao de ad sets.
 
 **Controles no nivel do ad set (opcionais):**
 
@@ -594,6 +615,27 @@ Nao confie apenas no Ads Manager. Monitore:
 
 ### Execucao Tecnica via MCP
 
+#### Atribuicao Incremental (Recurso Critico)
+
+O campo `is_incremental_attribution_enabled` no ad set faz o algoritmo otimizar para conversoes **causadas pelo anuncio**, nao apenas correlacionadas. Este e o recurso mais impactante do Andromeda para contas com alto volume organico.
+
+```
+create_adset(
+  name: "Ad Set Incremental",
+  campaign_id: "{id}",
+  is_incremental_attribution_enabled: true,
+  optimization_goal: "OFFSITE_CONVERSIONS",
+  ...
+)
+```
+
+**Quando usar:**
+- Contas onde % incremental < 30% do total de conversoes
+- Produtos com alto volume de compra organica
+- Quando CPA "all conversions" parece bom mas crescimento real e baixo
+
+**Impacto:** Em testes reais, contas com 82% de conversoes nao-incrementais viram mudanca significativa no sinal de otimizacao ao ativar este campo.
+
 #### Comparacao de Atribuicao
 
 Use `get_attribution_comparison` para comparar modelos:
@@ -646,6 +688,7 @@ Retorna ads + insights em uma chamada so.
 
 | Tool | Uso no contexto Andromeda |
 |------|--------------------------|
+| `create_adset` | Criar ad set com `is_incremental_attribution_enabled: true` |
 | `get_attribution_comparison` | Comparar All vs First vs Incremental |
 | `get_performance_summary` | Resumo agregado com atribuicao |
 | `get_campaign_insights` | Metricas de campanha com janelas de atribuicao |
