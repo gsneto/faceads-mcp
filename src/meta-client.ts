@@ -330,7 +330,7 @@ export class MetaClient {
    */
   async getCampaign(
     campaignId: string,
-    fields: string[] = ['id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget', 'budget_remaining', 'created_time', 'updated_time']
+    fields: string[] = ['id', 'name', 'status', 'objective', 'daily_budget', 'lifetime_budget', 'budget_remaining', 'created_time', 'updated_time', 'spend_cap', 'bid_strategy', 'buying_type', 'effective_status', 'special_ad_categories', 'is_adset_budget_sharing_enabled', 'issues_info', 'start_time', 'stop_time']
   ): Promise<Campaign> {
     return this.get<Campaign>(campaignId, { fields: fields.join(',') });
   }
@@ -345,8 +345,14 @@ export class MetaClient {
     special_ad_categories?: string[];
     daily_budget?: number;
     lifetime_budget?: number;
+    spend_cap?: number;
+    buying_type?: string;
     bid_strategy?: string;
     is_adset_budget_sharing_enabled?: boolean;
+    start_time?: string;
+    stop_time?: string;
+    is_skadnetwork_attribution?: boolean;
+    promoted_object?: object;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/campaigns`, {
       ...params,
@@ -366,6 +372,12 @@ export class MetaClient {
       status?: string;
       daily_budget?: number;
       lifetime_budget?: number;
+      spend_cap?: number;
+      bid_strategy?: string;
+      is_adset_budget_sharing_enabled?: boolean;
+      special_ad_categories?: string[];
+      start_time?: string;
+      stop_time?: string;
     }
   ): Promise<{ success: boolean }> {
     return this.post<{ success: boolean }>(campaignId, params);
@@ -401,7 +413,7 @@ export class MetaClient {
    */
   async getAdSet(
     adsetId: string,
-    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget', 'targeting', 'is_incremental_attribution_enabled', 'attribution_spec']
+    fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget', 'targeting', 'is_incremental_attribution_enabled', 'attribution_spec', 'effective_status', 'issues_info', 'created_time', 'updated_time', 'lifetime_budget', 'destination_type', 'learning_stage_info', 'promoted_object', 'optimization_goal', 'billing_event', 'bid_strategy']
   ): Promise<AdSet> {
     return this.get<AdSet>(adsetId, { fields: fields.join(',') });
   }
@@ -416,6 +428,7 @@ export class MetaClient {
     optimization_goal: string;
     bid_amount?: number;
     bid_strategy?: string;
+    bid_constraints?: object;
     daily_budget?: number;
     lifetime_budget?: number;
     targeting: object;
@@ -439,6 +452,27 @@ export class MetaClient {
     }>;
     is_incremental_attribution_enabled?: boolean;
     excluded_custom_audiences?: Array<{ id: string }>;
+    destination_type?: string;
+    is_dynamic_creative?: boolean;
+    adset_schedule?: Array<{
+      start_minute: number;
+      end_minute: number;
+      days: number[];
+      timezone_type?: string;
+    }>;
+    pacing_type?: string[];
+    frequency_control_specs?: Array<{
+      event: string;
+      interval_days: number;
+      max_frequency: number;
+    }>;
+    daily_min_spend_target?: number;
+    daily_spend_cap?: number;
+    value_rule_set_id?: string;
+    value_rules_applied?: boolean;
+    dsa_beneficiary?: string;
+    dsa_payor?: string;
+    adlabels?: Array<{ id: string }>;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, {
       ...params,
@@ -458,6 +492,19 @@ export class MetaClient {
       daily_budget?: number;
       lifetime_budget?: number;
       targeting?: object;
+      bid_strategy?: string;
+      bid_amount?: number;
+      bid_constraints?: object;
+      start_time?: string;
+      end_time?: string;
+      optimization_goal?: string;
+      promoted_object?: object;
+      attribution_spec?: Array<{ event_type: string; window_days: number }>;
+      value_rule_set_id?: string;
+      value_rules_applied?: boolean;
+      dsa_beneficiary?: string;
+      dsa_payor?: string;
+      adlabels?: Array<{ id: string }>;
     }
   ): Promise<{ success: boolean }> {
     return this.post<{ success: boolean }>(adsetId, params);
@@ -491,7 +538,7 @@ export class MetaClient {
    */
   async getAd(
     adId: string,
-    fields: string[] = ['id', 'name', 'status', 'effective_status', 'adset_id', 'creative', 'created_time']
+    fields: string[] = ['id', 'name', 'status', 'effective_status', 'adset_id', 'creative', 'created_time', 'tracking_specs', 'conversion_domain', 'updated_time', 'ad_review_feedback', 'issues_info']
   ): Promise<Ad> {
     return this.get<Ad>(adId, { fields: fields.join(',') });
   }
@@ -504,6 +551,11 @@ export class MetaClient {
     adset_id: string;
     creative: { creative_id: string } | object;
     status?: string;
+    tracking_specs?: Array<Record<string, unknown>>;
+    ad_schedule_start_time?: string;
+    ad_schedule_end_time?: string;
+    conversion_domain?: string;
+    adlabels?: Array<{ id: string }>;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/ads`, params);
   }
@@ -516,6 +568,10 @@ export class MetaClient {
     params: {
       name?: string;
       status?: string;
+      creative?: { creative_id: string };
+      tracking_specs?: Array<Record<string, unknown>>;
+      conversion_domain?: string;
+      adlabels?: Array<{ id: string }>;
     }
   ): Promise<{ success: boolean }> {
     return this.post<{ success: boolean }>(adId, params);
@@ -537,7 +593,7 @@ export class MetaClient {
    */
   async getCreative(
     creativeId: string,
-    fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url', 'effective_object_story_id']
+    fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url', 'effective_object_story_id', 'url_tags', 'image_hash', 'image_url', 'object_story_id', 'body', 'title', 'link_url']
   ): Promise<AdCreative> {
     return this.get<AdCreative>(creativeId, { fields: fields.join(',') });
   }
@@ -548,9 +604,14 @@ export class MetaClient {
   async createCreative(params: {
     name: string;
     object_story_spec?: object;
+    object_story_id?: string;
+    image_hash?: string;
+    image_url?: string;
+    url_tags?: string;
     asset_feed_spec?: object;
     degrees_of_freedom_spec?: object;
     creative_features_spec?: object;
+    platform_customizations?: object;
   }): Promise<{ id: string }> {
     return this.post<{ id: string }>(`${this.config.adAccountId}/adcreatives`, params);
   }
@@ -795,6 +856,119 @@ export class MetaClient {
     }
 
     return this.get('search', queryParams);
+  }
+
+  // ==================== VÍDEO ====================
+
+  /**
+   * Faz upload de um vídeo via URL
+   */
+  async uploadVideo(params: {
+    file_url: string;
+    title?: string;
+    description?: string;
+  }): Promise<{ id: string }> {
+    return this.post<{ id: string }>(`${this.config.adAccountId}/advideos`, params);
+  }
+
+  /**
+   * Obtém status de processamento de um vídeo
+   */
+  async getVideoStatus(
+    videoId: string,
+    fields: string[] = ['id', 'status', 'length', 'source', 'title', 'created_time']
+  ): Promise<Record<string, unknown>> {
+    return this.get(videoId, { fields: fields.join(',') });
+  }
+
+  // ==================== VALUE RULES ====================
+
+  async createValueRuleSet(params: {
+    name: string;
+    rules: Array<Record<string, unknown>>;
+  }): Promise<{ id: string }> {
+    return this.post<{ id: string }>(`${this.config.adAccountId}/value_rule_set`, params);
+  }
+
+  async listValueRuleSets(
+    fields: string[] = ['id', 'name', 'rules']
+  ): Promise<{ data: Array<Record<string, unknown>> }> {
+    return this.get(`${this.config.adAccountId}/value_rule_set`, { fields: fields.join(',') });
+  }
+
+  async getValueRuleSet(
+    ruleSetId: string,
+    fields: string[] = ['id', 'name', 'rules', 'status']
+  ): Promise<Record<string, unknown>> {
+    return this.get(ruleSetId, { fields: fields.join(',') });
+  }
+
+  async updateValueRuleSet(
+    ruleSetId: string,
+    params: { name?: string; rules?: Array<Record<string, unknown>> }
+  ): Promise<{ success: boolean }> {
+    return this.post<{ success: boolean }>(ruleSetId, params);
+  }
+
+  async deleteValueRuleSet(ruleSetId: string): Promise<{ success: boolean }> {
+    return this.post<{ success: boolean }>(`${ruleSetId}/delete_rule_set`, {});
+  }
+
+  // ==================== AD LABELS ====================
+
+  async createAdLabel(params: { name: string }): Promise<{ id: string }> {
+    return this.post<{ id: string }>(`${this.config.adAccountId}/adlabels`, params);
+  }
+
+  async listAdLabels(
+    fields: string[] = ['id', 'name', 'created_time']
+  ): Promise<{ data: Array<Record<string, unknown>> }> {
+    return this.get(`${this.config.adAccountId}/adlabels`, { fields: fields.join(',') });
+  }
+
+  // ==================== CREATIVE PREVIEW ====================
+
+  async previewCreative(
+    creativeId: string,
+    adFormat: string
+  ): Promise<{ data: Array<{ body: string }> }> {
+    return this.get(`${creativeId}/previews`, { ad_format: adFormat });
+  }
+
+  // ==================== BUDGET SCHEDULE ====================
+
+  async createBudgetSchedule(
+    campaignId: string,
+    params: { budget_value: number; budget_value_type: string; time_start: string; time_end: string }
+  ): Promise<{ id: string }> {
+    const apiParams = {
+      budget_value: params.budget_value,
+      budget_value_type: params.budget_value_type,
+      time_start: Math.floor(new Date(params.time_start).getTime() / 1000),
+      time_end: Math.floor(new Date(params.time_end).getTime() / 1000),
+    };
+    return this.post<{ id: string }>(`${campaignId}/budget_schedules`, apiParams);
+  }
+
+  async getBudgetSchedules(
+    campaignId: string
+  ): Promise<{ data: Array<Record<string, unknown>> }> {
+    return this.get(`${campaignId}/budget_schedules`, {});
+  }
+
+  async updateBudgetSchedule(
+    scheduleId: string,
+    params: { budget_value?: number; time_start?: string; time_end?: string }
+  ): Promise<{ success: boolean }> {
+    const apiParams: Record<string, unknown> = {};
+    if (params.budget_value !== undefined) apiParams.budget_value = params.budget_value;
+    if (params.time_start) apiParams.time_start = Math.floor(new Date(params.time_start).getTime() / 1000);
+    if (params.time_end) apiParams.time_end = Math.floor(new Date(params.time_end).getTime() / 1000);
+    return this.post<{ success: boolean }>(scheduleId, apiParams);
+  }
+
+  async deleteBudgetSchedule(scheduleId: string): Promise<{ success: boolean }> {
+    return this.delete(scheduleId);
   }
 }
 

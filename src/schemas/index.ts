@@ -21,13 +21,41 @@ export type ValidationResult<T> =
   | { success: false; error: string };
 
 /**
+ * Preprocess MCP args: coerce string-encoded numbers and JSON-encoded objects.
+ * The MCP protocol may serialize all values as strings, so we need to convert
+ * them back to their expected types before Zod validation.
+ */
+function preprocessMcpArgs(args: unknown): unknown {
+  if (args === null || args === undefined || typeof args !== 'object') return args;
+  const obj = args as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === 'string') {
+      // Try to parse JSON strings (objects/arrays) — but NOT plain strings or numbers
+      if ((value.startsWith('{') && value.endsWith('}')) || (value.startsWith('[') && value.endsWith(']'))) {
+        try {
+          result[key] = JSON.parse(value);
+          continue;
+        } catch { /* keep as string */ }
+      }
+      // Coerce boolean strings
+      if (value === 'true') { result[key] = true; continue; }
+      if (value === 'false') { result[key] = false; continue; }
+    }
+    result[key] = value;
+  }
+  return result;
+}
+
+/**
  * Valida argumentos com um schema Zod
  */
 export function validateArgs<T>(
   schema: z.ZodType<T>,
   args: unknown
 ): ValidationResult<T> {
-  const result = schema.safeParse(args);
+  const preprocessed = preprocessMcpArgs(args);
+  const result = schema.safeParse(preprocessed);
 
   if (result.success) {
     return { success: true, data: result.data };

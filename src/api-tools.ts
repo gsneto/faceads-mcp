@@ -66,6 +66,25 @@ import {
   type SearchGeolocationArgs,
   // API Customizada
   type ExecuteApiArgs,
+  // Video
+  type UploadVideoArgs,
+  type GetVideoStatusArgs,
+  // Value Rules
+  type CreateValueRuleSetArgs,
+  type ListValueRuleSetsArgs,
+  type GetValueRuleSetArgs,
+  type UpdateValueRuleSetArgs,
+  type DeleteValueRuleSetArgs,
+  // Ad Labels
+  type CreateAdLabelArgs,
+  type ListAdLabelsArgs,
+  // Creative Preview
+  type PreviewCreativeArgs,
+  // Budget Schedule
+  type CreateBudgetScheduleArgs,
+  type GetBudgetSchedulesArgs,
+  type UpdateBudgetScheduleArgs,
+  type DeleteBudgetScheduleArgs,
 } from './schemas/index.js';
 
 /**
@@ -188,14 +207,18 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
 6. \`create_ad\` - vincular ad set + criativo
 
 **ORÇAMENTO:**
-- Para CBO (Campaign Budget Optimization): defina daily_budget na campanha
+- Para CBO (Campaign Budget Optimization): defina daily_budget OU lifetime_budget na campanha
 - Para ABO (Ad Set Budget): defina daily_budget nos ad sets individuais
-
-O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
+- daily_budget e lifetime_budget são MUTUAMENTE EXCLUSIVOS
+- lifetime_budget requer start_time e stop_time
 
 **BID STRATEGY (CBO):**
 - Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP automaticamente
-- Para usar BID_CAP ou COST_CAP, defina bid_strategy explicitamente`,
+- Para usar BID_CAP ou COST_CAP, defina bid_strategy explicitamente
+
+**SPEND CAP:** Limite total de gasto da campanha. Mínimo ~$100 USD. Use 922337203685478 para remover.
+
+**BUYING TYPE:** AUCTION (padrão) ou RESERVED (Reach & Frequency).`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -206,7 +229,10 @@ O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
           description: 'Objetivo da campanha',
         },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial (default: PAUSED)' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (para CBO - Campaign Budget Optimization)' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (para CBO). Mutuamente exclusivo com lifetime_budget.' },
+        lifetime_budget: { type: 'number', description: 'Orçamento vitalício em centavos. Mutuamente exclusivo com daily_budget. Requer start_time e stop_time.' },
+        spend_cap: { type: 'number', description: 'Limite de gasto total da campanha em centavos. Mínimo ~$100 USD. Use 922337203685478 para remover.' },
+        buying_type: { type: 'string', enum: ['AUCTION', 'RESERVED'], description: 'Tipo de compra (default: AUCTION). RESERVED para Reach & Frequency.' },
         special_ad_categories: {
           type: 'array',
           items: { type: 'string', enum: ['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS'] },
@@ -215,19 +241,23 @@ O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
         bid_strategy: {
           type: 'string',
           enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'],
-          description: 'Estratégia de lance para CBO. Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP automaticamente.',
+          description: 'Estratégia de lance para CBO.',
         },
         is_adset_budget_sharing_enabled: {
           type: 'boolean',
           description: 'Permite compartilhamento de até 20% do orçamento entre ad sets (default: false)',
         },
+        start_time: { type: 'string', description: 'Data/hora de início (ISO 8601). Obrigatório com lifetime_budget.' },
+        stop_time: { type: 'string', description: 'Data/hora de fim (ISO 8601). Obrigatório com lifetime_budget.' },
+        is_skadnetwork_attribution: { type: 'boolean', description: 'Habilitar atribuição SKAdNetwork para iOS 14+' },
+        promoted_object: { type: 'object', description: 'Objeto promovido no nível da campanha (iOS 14+ SKAdNetwork)' },
       },
       required: ['name', 'objective'],
     },
   },
   {
     name: 'update_campaign',
-    description: 'Atualiza uma campanha existente. Requer API key configurada.',
+    description: 'Atualiza uma campanha existente. Suporta alteração de orçamento, bid strategy, schedule e mais.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -235,6 +265,21 @@ O campo is_adset_budget_sharing_enabled é incluído automaticamente como false.
         name: { type: 'string', description: 'Novo nome' },
         status: { type: 'string', enum: ['ACTIVE', 'PAUSED'], description: 'Novo status' },
         daily_budget: { type: 'number', description: 'Novo orçamento diário em centavos' },
+        lifetime_budget: { type: 'number', description: 'Novo orçamento vitalício em centavos' },
+        spend_cap: { type: 'number', description: 'Novo limite de gasto total. Use 922337203685478 para remover.' },
+        bid_strategy: {
+          type: 'string',
+          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'],
+          description: 'Nova estratégia de lance',
+        },
+        is_adset_budget_sharing_enabled: { type: 'boolean', description: 'Toggle CBO/ABO budget sharing' },
+        special_ad_categories: {
+          type: 'array',
+          items: { type: 'string', enum: ['CREDIT', 'EMPLOYMENT', 'HOUSING', 'ISSUES_ELECTIONS_POLITICS'] },
+          description: 'Categorias especiais de anúncios',
+        },
+        start_time: { type: 'string', description: 'Nova data/hora de início (ISO 8601)' },
+        stop_time: { type: 'string', description: 'Nova data/hora de fim (ISO 8601)' },
       },
       required: ['campaign_id'],
     },
@@ -367,7 +412,8 @@ Exemplo correto: key 460 = São Paulo, BR
       properties: {
         name: { type: 'string', description: 'Nome do ad set' },
         campaign_id: { type: 'string', description: 'ID da campanha pai' },
-        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil). ATENÇÃO: NÃO defina se a campanha pai é CBO (tem budget próprio). Obrigatório se campanha é ABO.' },
+        daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil). Mutuamente exclusivo com lifetime_budget.' },
+        lifetime_budget: { type: 'number', description: 'Orçamento vitalício em centavos. Mutuamente exclusivo com daily_budget. Requer end_time.' },
         billing_event: {
           type: 'string',
           enum: ['IMPRESSIONS', 'LINK_CLICKS', 'APP_INSTALLS', 'PAGE_LIKES', 'POST_ENGAGEMENT', 'VIDEO_VIEWS'],
@@ -399,10 +445,10 @@ Exemplo correto: key 460 = São Paulo, BR
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial' },
         bid_strategy: {
           type: 'string',
-          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP', 'BID_CAP'],
-          description: 'Estratégia de lance (default: LOWEST_COST_WITHOUT_CAP)',
+          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP'],
+          description: 'Estratégia de lance (default: LOWEST_COST_WITHOUT_CAP). Nota: BID_CAP é apenas para campanhas; em ad sets use LOWEST_COST_WITH_BID_CAP.',
         },
-        bid_amount: { type: 'number', description: 'Valor do lance em centavos (obrigatório para BID_CAP e COST_CAP)' },
+        bid_amount: { type: 'number', description: 'Valor do lance em centavos (obrigatório para LOWEST_COST_WITH_BID_CAP e COST_CAP)' },
         promoted_object: {
           type: 'object',
           description: 'Objeto promovido. OBRIGATÓRIO para: OFFSITE_CONVERSIONS (pixel_id + custom_event_type), APP_INSTALLS (application_id), PAGE_LIKES (page_id). Use list_pixels para obter pixel_id.',
@@ -460,13 +506,58 @@ Exemplo correto: key 460 = São Paulo, BR
           },
           description: 'Custom audiences para excluir do targeting. Campo TOP-LEVEL (NÃO dentro de targeting.exclusions, que foi depreciado na v24.0).',
         },
+        destination_type: {
+          type: 'string',
+          enum: ['WEBSITE', 'APP', 'MESSENGER', 'WHATSAPP', 'INSTAGRAM_DIRECT', 'PHONE_CALL', 'SHOP', 'UNDEFINED'],
+          description: 'Tipo de destino. Obrigatório para objetivos ODAX.',
+        },
+        is_dynamic_creative: {
+          type: 'boolean',
+          description: 'Habilitar Dynamic Creative (DCO). Quando true, aceita criativos com asset_feed_spec.',
+        },
+        adset_schedule: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              start_minute: { type: 'number', description: 'Minuto de início (0-1440)' },
+              end_minute: { type: 'number', description: 'Minuto de fim (0-1440)' },
+              days: { type: 'array', items: { type: 'number' }, description: 'Dias da semana (0=dom, 6=sáb)' },
+              timezone_type: { type: 'string', enum: ['USER', 'ADVERTISER'] },
+            },
+          },
+          description: 'Dayparting. REQUER lifetime_budget e pacing_type=["day_parting"]. Ex: [{start_minute: 480, end_minute: 1320, days: [1,2,3,4,5]}]',
+        },
+        pacing_type: {
+          type: 'array',
+          items: { type: 'string', enum: ['standard', 'day_parting', 'no_pacing'] },
+          description: 'Tipo de ritmo de entrega. Use ["day_parting"] quando adset_schedule estiver definido.',
+        },
+        frequency_control_specs: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              event: { type: 'string', description: 'Tipo de evento (IMPRESSIONS)' },
+              interval_days: { type: 'number', description: 'Intervalo em dias' },
+              max_frequency: { type: 'number', description: 'Frequência máxima' },
+            },
+          },
+          description: 'Controle de frequência. Ex: [{event: "IMPRESSIONS", interval_days: 7, max_frequency: 3}]',
+        },
+        daily_min_spend_target: { type: 'number', description: 'Meta mínima de gasto diário em centavos (CBO)' },
+        daily_spend_cap: { type: 'number', description: 'Limite máximo de gasto diário em centavos (CBO)' },
+        bid_constraints: { type: 'object', description: 'Restrições de lance. Ex: {"roas_average_floor": 2.0}. Requer optimization_goal=VALUE e bid_strategy não-autobid.' },
+        dsa_beneficiary: { type: 'string', description: 'Beneficiário DSA (EU compliance)' },
+        dsa_payor: { type: 'string', description: 'Pagador DSA (EU compliance)' },
+        adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels para associar' },
       },
       required: ['name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
     },
   },
   {
     name: 'update_adset',
-    description: 'Atualiza um conjunto de anúncios. Requer API key configurada.',
+    description: 'Atualiza um conjunto de anúncios. Suporta alteração de orçamento, bid strategy, targeting, schedule, promoted_object e mais.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -474,7 +565,56 @@ Exemplo correto: key 460 = São Paulo, BR
         name: { type: 'string', description: 'Novo nome' },
         status: { type: 'string', enum: ['ACTIVE', 'PAUSED'], description: 'Novo status' },
         daily_budget: { type: 'number', description: 'Novo orçamento diário em centavos' },
+        lifetime_budget: { type: 'number', description: 'Novo orçamento vitalício em centavos' },
         targeting: { type: 'object', description: 'Nova especificação de targeting' },
+        bid_strategy: {
+          type: 'string',
+          enum: ['LOWEST_COST_WITHOUT_CAP', 'LOWEST_COST_WITH_BID_CAP', 'COST_CAP'],
+          description: 'Nova estratégia de lance. Nota: BID_CAP é apenas para campanhas.',
+        },
+        bid_amount: { type: 'number', description: 'Novo valor do lance em centavos' },
+        bid_constraints: { type: 'object', description: 'Novas restrições de lance. Ex: {"roas_average_floor": 2.0}. Requer optimization_goal=VALUE.' },
+        start_time: { type: 'string', description: 'Nova data/hora de início (ISO 8601)' },
+        end_time: { type: 'string', description: 'Nova data/hora de fim (ISO 8601)' },
+        optimization_goal: {
+          type: 'string',
+          enum: [
+            'REACH', 'IMPRESSIONS', 'AD_RECALL_LIFT', 'LINK_CLICKS', 'LANDING_PAGE_VIEWS',
+            'OFFSITE_CONVERSIONS', 'VALUE', 'ENGAGED_USERS', 'EVENT_RESPONSES', 'PAGE_LIKES',
+            'POST_ENGAGEMENT', 'THRUPLAY', 'VIDEO_VIEWS', 'LEAD_GENERATION', 'QUALITY_LEAD',
+            'APP_INSTALLS', 'APP_INSTALLS_AND_OFFSITE_CONVERSIONS', 'VISIT_INSTAGRAM_PROFILE',
+            'PROFILE_VISIT', 'CONVERSATIONS', 'MESSAGING_PURCHASE_CONVERSION',
+            'MESSAGING_APPOINTMENT_CONVERSION', 'IN_APP_VALUE', 'SUBSCRIBERS', 'REMINDERS_SET',
+            'MEANINGFUL_CALL_ATTEMPT', 'QUALITY_CALL', 'DERIVED_EVENTS',
+          ],
+          description: 'Novo objetivo de otimização',
+        },
+        promoted_object: {
+          type: 'object',
+          description: 'Novo objeto promovido',
+          properties: {
+            pixel_id: { type: 'string' },
+            custom_event_type: { type: 'string' },
+            application_id: { type: 'string' },
+            page_id: { type: 'string' },
+          },
+        },
+        attribution_spec: {
+          type: 'array',
+          items: {
+            type: 'object',
+            properties: {
+              event_type: { type: 'string' },
+              window_days: { type: 'number' },
+            },
+          },
+          description: 'Nova especificação de atribuição',
+        },
+        value_rule_set_id: { type: 'string', description: 'ID do value rule set' },
+        value_rules_applied: { type: 'boolean', description: 'Habilitar regras de valor' },
+        dsa_beneficiary: { type: 'string', description: 'Beneficiário DSA (EU compliance)' },
+        dsa_payor: { type: 'string', description: 'Pagador DSA (EU compliance)' },
+        adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels' },
       },
       required: ['adset_id'],
     },
@@ -551,7 +691,12 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'create_ad',
-    description: 'Cria um novo anúncio. Requer API key configurada.',
+    description: `Cria um novo anúncio. Requer API key configurada.
+
+**Novos campos:**
+- tracking_specs: Especificações de rastreamento customizado
+- ad_schedule_start_time / ad_schedule_end_time: Agendamento (Sales/App only)
+- conversion_domain: Domínio de conversão (1st+2nd level)`,
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -559,19 +704,38 @@ Exemplo correto: key 460 = São Paulo, BR
         adset_id: { type: 'string', description: 'ID do ad set pai' },
         creative_id: { type: 'string', description: 'ID do criativo a usar' },
         status: { type: 'string', enum: ['PAUSED', 'ACTIVE'], description: 'Status inicial' },
+        tracking_specs: {
+          type: 'array',
+          items: { type: 'object' },
+          description: 'Especificações de rastreamento. Ex: [{"action.type": "offsite_conversion", "fb_pixel": "PIXEL_ID"}]',
+        },
+        ad_schedule_start_time: { type: 'string', description: 'Data/hora de início do ad (ISO 8601). Sales/App only.' },
+        ad_schedule_end_time: { type: 'string', description: 'Data/hora de fim do ad (ISO 8601). Sales/App only.' },
+        conversion_domain: { type: 'string', description: 'Domínio de conversão. Ex: "example.com"' },
+        adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels' },
       },
       required: ['name', 'adset_id', 'creative_id'],
     },
   },
   {
     name: 'update_ad',
-    description: 'Atualiza um anúncio existente. Use para alterar nome ou status (ACTIVE/PAUSED).',
+    description: `Atualiza um anúncio existente. Suporta alteração de nome, status, creative swap, tracking e mais.
+
+**Creative Swap:** Use creative: {"creative_id": "NEW_ID"} para trocar criativo sem recriar o ad.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         ad_id: { type: 'string', description: 'ID do anúncio' },
         name: { type: 'string', description: 'Novo nome' },
         status: { type: 'string', enum: ['ACTIVE', 'PAUSED'], description: 'Novo status' },
+        creative: {
+          type: 'object',
+          properties: { creative_id: { type: 'string', description: 'ID do novo criativo' } },
+          description: 'Trocar criativo sem recriar o ad',
+        },
+        tracking_specs: { type: 'array', items: { type: 'object' }, description: 'Novas especificações de rastreamento' },
+        conversion_domain: { type: 'string', description: 'Novo domínio de conversão' },
+        adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels' },
       },
       required: ['ad_id'],
     },
@@ -632,79 +796,133 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'create_creative',
-    description: `Cria um novo criativo para anúncios.
+    description: `Cria um novo criativo para anúncios. Suporta Link Ads, Video Ads, Carousel Ads e Dynamic Creative (DCO).
 
-**Estrutura do object_story_spec para Link Ad:**
+**Link Ad (object_story_spec.link_data):**
 \`\`\`json
 {
   "page_id": "ID_DA_PAGINA",
-  "instagram_user_id": "ID_DO_INSTAGRAM (opcional, use get_instagram_account)",
   "link_data": {
     "link": "https://seu-site.com",
     "message": "Texto do post",
-    "name": "Título do anúncio",
-    "description": "Descrição",
+    "name": "Título",
+    "image_hash": "HASH_DE_UPLOAD_IMAGE",
     "call_to_action": { "type": "LEARN_MORE" }
   }
 }
 \`\`\`
 
-**CTAs disponíveis:** LEARN_MORE, SHOP_NOW, SIGN_UP, BOOK_TRAVEL, CONTACT_US, DOWNLOAD, GET_QUOTE, APPLY_NOW, SUBSCRIBE, WATCH_MORE
-
-**Dica:** Use list_facebook_pages para obter page_id e get_instagram_account para obter instagram_user_id.
-
-**ADVANTAGE+ CREATIVE (Andromeda):**
-Use \`creative_features_spec\` para habilitar otimizações de IA:
+**Video Ad (object_story_spec.video_data):**
 \`\`\`json
 {
-  "creative_features_spec": {
-    "image_touchups": {"enroll_status": "OPT_IN"},
-    "text_optimizations": {"enroll_status": "OPT_IN"},
-    "enhance_cta": {"enroll_status": "OPT_IN"},
-    "image_uncrop": {"enroll_status": "OPT_IN"}
+  "page_id": "ID_DA_PAGINA",
+  "video_data": {
+    "video_id": "ID_DE_UPLOAD_VIDEO",
+    "message": "Texto do post",
+    "title": "Título",
+    "call_to_action": { "type": "SHOP_NOW", "value": {"link": "https://..."} }
   }
 }
-\`\`\``,
+\`\`\`
+
+**Carousel Ad (object_story_spec.link_data.child_attachments):**
+\`\`\`json
+{
+  "page_id": "ID_DA_PAGINA",
+  "link_data": {
+    "link": "https://seu-site.com",
+    "message": "Texto do post",
+    "child_attachments": [
+      {"link": "https://url1.com", "image_hash": "HASH1", "name": "Card 1"},
+      {"link": "https://url2.com", "image_hash": "HASH2", "name": "Card 2"}
+    ]
+  }
+}
+\`\`\`
+
+**DCO (asset_feed_spec):** Requer is_dynamic_creative=true no ad set.
+
+**Boosted Post (object_story_id):** Use PAGE_ID_POST_ID para promover post existente.
+
+**CTAs:** LEARN_MORE, SHOP_NOW, SIGN_UP, BOOK_TRAVEL, CONTACT_US, DOWNLOAD, GET_QUOTE, APPLY_NOW, SUBSCRIBE, WATCH_MORE`,
     inputSchema: {
       type: 'object' as const,
       properties: {
         name: { type: 'string', description: 'Nome do criativo' },
         object_story_spec: {
           type: 'object',
-          description: 'Especificação do criativo. Deve conter page_id e link_data (ou video_data, photo_data)',
+          description: 'Especificação do criativo. Suporta link_data (Link/Carousel), video_data (Video), photo_data (Image).',
           properties: {
             page_id: { type: 'string', description: 'ID da página do Facebook' },
             instagram_user_id: { type: 'string', description: 'ID do Instagram (obter via get_instagram_account)' },
             link_data: {
               type: 'object',
-              description: 'Dados do link para anúncio',
+              description: 'Dados do link. Para carousel, inclua child_attachments.',
               properties: {
                 link: { type: 'string', description: 'URL de destino' },
                 message: { type: 'string', description: 'Texto do post' },
                 name: { type: 'string', description: 'Título do anúncio' },
                 description: { type: 'string', description: 'Descrição' },
+                image_hash: { type: 'string', description: 'Hash da imagem (de upload_image)' },
+                image_url: { type: 'string', description: 'URL externa da imagem' },
                 call_to_action: {
                   type: 'object',
-                  properties: {
-                    type: { type: 'string', description: 'Tipo do CTA (LEARN_MORE, SHOP_NOW, etc.)' },
-                  },
+                  properties: { type: { type: 'string', description: 'Tipo do CTA' } },
                 },
+                child_attachments: {
+                  type: 'array',
+                  items: { type: 'object' },
+                  description: 'Cards do carrossel (2-10 cards)',
+                },
+                multi_share_end_card: { type: 'boolean', description: 'Mostrar card final com página' },
+                multi_share_optimized: { type: 'boolean', description: 'Otimizar ordem dos cards' },
               },
             },
+            video_data: {
+              type: 'object',
+              description: 'Dados do vídeo. Requer video_id de upload_video.',
+              properties: {
+                video_id: { type: 'string', description: 'ID do vídeo' },
+                image_hash: { type: 'string', description: 'Thumbnail hash' },
+                message: { type: 'string', description: 'Texto do post' },
+                title: { type: 'string', description: 'Título' },
+                link_description: { type: 'string', description: 'Descrição do link' },
+                call_to_action: { type: 'object', properties: { type: { type: 'string' } } },
+              },
+            },
+            page_welcome_message: { type: 'string', description: 'Mensagem de boas-vindas (Click-to-WhatsApp/Messenger)' },
           },
         },
+        object_story_id: { type: 'string', description: 'ID de post existente para promover (PAGE_ID_POST_ID). Alternativa a object_story_spec.' },
+        image_hash: { type: 'string', description: 'Hash da imagem (de upload_image). Top-level.' },
+        image_url: { type: 'string', description: 'URL externa da imagem. Top-level.' },
+        url_tags: { type: 'string', description: 'Parâmetros UTM automáticos. Ex: "utm_source=facebook&utm_medium=cpc"' },
+        asset_feed_spec: {
+          type: 'object',
+          description: 'Assets para Dynamic Creative (DCO). Requer is_dynamic_creative=true no ad set.',
+          properties: {
+            images: { type: 'array', items: { type: 'object' }, description: 'Imagens para DCO' },
+            videos: { type: 'array', items: { type: 'object' }, description: 'Vídeos para DCO' },
+            bodies: { type: 'array', items: { type: 'object' }, description: 'Textos do corpo' },
+            titles: { type: 'array', items: { type: 'object' }, description: 'Títulos' },
+            descriptions: { type: 'array', items: { type: 'object' }, description: 'Descrições' },
+            call_to_action_types: { type: 'array', items: { type: 'string' }, description: 'CTAs' },
+            link_urls: { type: 'array', items: { type: 'object' }, description: 'URLs de destino' },
+          },
+        },
+        platform_customizations: { type: 'object', description: 'Customizações por plataforma (imagem diferente para Instagram vs Facebook)' },
         creative_features_spec: {
           type: 'object',
-          description: 'Advantage+ Creative features para otimizações de IA. Cada feature aceita {"enroll_status": "OPT_IN"} ou {"enroll_status": "OPT_OUT"}.',
+          description: 'Advantage+ Creative features. Cada feature aceita {"enroll_status": "OPT_IN"/"OPT_OUT"}.',
           properties: {
-            image_touchups: { type: 'object', description: 'Auto crop/expand para placements' },
-            image_background_gen: { type: 'object', description: 'Backgrounds gerados por IA' },
-            image_templates: { type: 'object', description: 'Overlays de texto gerados por IA' },
-            text_optimizations: { type: 'object', description: 'Texto dinâmico otimizado' },
+            image_touchups: { type: 'object', description: 'Auto crop/expand' },
+            image_background_gen: { type: 'object', description: 'Backgrounds IA' },
+            image_templates: { type: 'object', description: 'Overlays texto IA' },
+            text_optimizations: { type: 'object', description: 'Texto dinâmico' },
             enhance_cta: { type: 'object', description: 'CTA aprimorado' },
-            image_uncrop: { type: 'object', description: 'Expansão de imagem por IA' },
-            video_auto_crop: { type: 'object', description: 'Vídeo auto crop/expand' },
-            media_type_automation: { type: 'object', description: 'Mídia dinâmica (vídeo/imagens)' },
+            image_uncrop: { type: 'object', description: 'Expansão imagem IA' },
+            video_auto_crop: { type: 'object', description: 'Vídeo auto crop' },
+            media_type_automation: { type: 'object', description: 'Mídia dinâmica' },
             description_automation: { type: 'object', description: 'Descrições dinâmicas' },
           },
         },
@@ -1315,6 +1533,205 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     },
   },
 
+  // ==================== VÍDEO ====================
+  {
+    name: 'upload_video',
+    description: `Faz upload de um vídeo para a conta de anúncios via URL.
+
+**QUANDO USAR:**
+- Antes de criar criativos de vídeo
+- O video_id retornado deve ser usado em video_data.video_id do object_story_spec
+
+**RETORNA:** video_id para usar em create_creative
+
+**EXEMPLO DE USO:**
+1. upload_video(file_url: "https://exemplo.com/video.mp4")
+2. get_video_status(video_id: "ID") - aguardar processamento
+3. Usar video_id no create_creative com video_data`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        file_url: { type: 'string', description: 'URL do vídeo para upload' },
+        title: { type: 'string', description: 'Título do vídeo' },
+        description: { type: 'string', description: 'Descrição do vídeo' },
+      },
+      required: ['file_url'],
+    },
+  },
+  {
+    name: 'get_video_status',
+    description: 'Verifica o status de processamento de um vídeo. Use após upload_video para confirmar que o vídeo está pronto.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        video_id: { type: 'string', description: 'ID do vídeo' },
+      },
+      required: ['video_id'],
+    },
+  },
+
+  // ==================== VALUE RULES ====================
+  {
+    name: 'create_value_rule_set',
+    description: 'Cria um conjunto de regras de valor para otimizar conversões com valores diferenciados (ex: por idade, gênero, localização).',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Nome do value rule set' },
+        rules: { type: 'array', items: { type: 'object' }, description: 'Array de regras de valor. Cada regra: {name, adjust_sign: "INCREASE"|"DECREASE", adjust_value: 1-1000, criterias: [{criteria_type: "AGE"|"GENDER"|"LOCATION"|"OS_TYPE"|"DEVICE_PLATFORM"|"PLACEMENT", operator: "CONTAINS", criteria_values: [...], criteria_value_types: [...]}]}' },
+      },
+      required: ['name', 'rules'],
+    },
+  },
+  {
+    name: 'list_value_rule_sets',
+    description: 'Lista todos os conjuntos de regras de valor da conta.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+      },
+    },
+  },
+  {
+    name: 'get_value_rule_set',
+    description: 'Obtém detalhes de um conjunto de regras de valor específico.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        value_rule_set_id: { type: 'string', description: 'ID do value rule set' },
+        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+      },
+      required: ['value_rule_set_id'],
+    },
+  },
+  {
+    name: 'update_value_rule_set',
+    description: 'Atualiza um conjunto de regras de valor existente.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        value_rule_set_id: { type: 'string', description: 'ID do value rule set' },
+        name: { type: 'string', description: 'Novo nome' },
+        rules: { type: 'array', items: { type: 'object' }, description: 'Novas regras' },
+      },
+      required: ['value_rule_set_id'],
+    },
+  },
+  {
+    name: 'delete_value_rule_set',
+    description: 'Deleta um conjunto de regras de valor.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        value_rule_set_id: { type: 'string', description: 'ID do value rule set a deletar' },
+      },
+      required: ['value_rule_set_id'],
+    },
+  },
+
+  // ==================== AD LABELS ====================
+  {
+    name: 'create_ad_label',
+    description: 'Cria um label para organizar campanhas, ad sets e ads.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        name: { type: 'string', description: 'Nome do label' },
+      },
+      required: ['name'],
+    },
+  },
+  {
+    name: 'list_ad_labels',
+    description: 'Lista todos os labels da conta de anúncios.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
+      },
+    },
+  },
+
+  // ==================== CREATIVE PREVIEW ====================
+  {
+    name: 'preview_creative',
+    description: `Gera um preview HTML de um criativo em diferentes formatos.
+
+**Formatos disponíveis:**
+- DESKTOP_FEED_STANDARD: Feed desktop
+- MOBILE_FEED_STANDARD: Feed mobile
+- INSTAGRAM_STANDARD: Feed Instagram
+- INSTAGRAM_STORY: Story Instagram
+- INSTAGRAM_REELS: Reels Instagram
+- RIGHT_COLUMN_STANDARD: Coluna direita desktop`,
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        creative_id: { type: 'string', description: 'ID do criativo' },
+        ad_format: {
+          type: 'string',
+          enum: ['DESKTOP_FEED_STANDARD', 'MOBILE_FEED_STANDARD', 'MOBILE_FEED_BASIC', 'INSTAGRAM_STANDARD', 'INSTAGRAM_STORY', 'INSTAGRAM_REELS', 'RIGHT_COLUMN_STANDARD', 'MARKETPLACE_MOBILE', 'AUDIENCE_NETWORK_OUTSTREAM_VIDEO'],
+          description: 'Formato do preview',
+        },
+      },
+      required: ['creative_id', 'ad_format'],
+    },
+  },
+
+  // ==================== BUDGET SCHEDULE ====================
+  {
+    name: 'create_budget_schedule',
+    description: 'Cria um agendamento de orçamento para períodos de alta demanda (HDP). Permite aumentar o orçamento temporariamente.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        campaign_id: { type: 'string', description: 'ID da campanha' },
+        budget_value: { type: 'number', description: 'Valor do orçamento em centavos para o período' },
+        budget_value_type: { type: 'string', enum: ['ABSOLUTE', 'MULTIPLIER'], description: 'Tipo do valor: ABSOLUTE (centavos) ou MULTIPLIER. Default: ABSOLUTE' },
+        time_start: { type: 'string', description: 'Data/hora de início (ISO 8601)' },
+        time_end: { type: 'string', description: 'Data/hora de fim (ISO 8601)' },
+      },
+      required: ['campaign_id', 'budget_value', 'time_start', 'time_end'],
+    },
+  },
+  {
+    name: 'get_budget_schedules',
+    description: 'Lista agendamentos de orçamento de uma campanha.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        campaign_id: { type: 'string', description: 'ID da campanha' },
+      },
+      required: ['campaign_id'],
+    },
+  },
+  {
+    name: 'update_budget_schedule',
+    description: '[DEPRECATED v24.0] Atualiza um agendamento de orçamento. NOTA: Este endpoint está deprecated na API v24.0. Use delete + create para modificar schedules.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        budget_schedule_id: { type: 'string', description: 'ID do budget schedule' },
+        budget_value: { type: 'number', description: 'Novo valor do orçamento' },
+        time_start: { type: 'string', description: 'Nova data/hora de início' },
+        time_end: { type: 'string', description: 'Nova data/hora de fim' },
+      },
+      required: ['budget_schedule_id'],
+    },
+  },
+  {
+    name: 'delete_budget_schedule',
+    description: 'Deleta um agendamento de orçamento.',
+    inputSchema: {
+      type: 'object' as const,
+      properties: {
+        budget_schedule_id: { type: 'string', description: 'ID do budget schedule a deletar' },
+      },
+      required: ['budget_schedule_id'],
+    },
+  },
+
   // ==================== CONTEXTO ====================
   {
     name: 'get_skill',
@@ -1666,6 +2083,95 @@ export async function handleApiTool(
         return await handleExecuteApi(client, validation.data);
       }
 
+      // ==================== VIDEO ====================
+      case 'upload_video': {
+        const validation = validateArgs(apiSchemas.upload_video, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleUploadVideo(client, validation.data);
+      }
+
+      case 'get_video_status': {
+        const validation = validateArgs(apiSchemas.get_video_status, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetVideoStatus(client, validation.data);
+      }
+
+      // ==================== VALUE RULES ====================
+      case 'create_value_rule_set': {
+        const validation = validateArgs(apiSchemas.create_value_rule_set, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleCreateValueRuleSet(client, validation.data);
+      }
+
+      case 'list_value_rule_sets': {
+        const validation = validateArgs(apiSchemas.list_value_rule_sets, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListValueRuleSets(client, validation.data);
+      }
+
+      case 'get_value_rule_set': {
+        const validation = validateArgs(apiSchemas.get_value_rule_set, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetValueRuleSet(client, validation.data);
+      }
+
+      case 'update_value_rule_set': {
+        const validation = validateArgs(apiSchemas.update_value_rule_set, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleUpdateValueRuleSet(client, validation.data);
+      }
+
+      case 'delete_value_rule_set': {
+        const validation = validateArgs(apiSchemas.delete_value_rule_set, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleDeleteValueRuleSet(client, validation.data);
+      }
+
+      // ==================== AD LABELS ====================
+      case 'create_ad_label': {
+        const validation = validateArgs(apiSchemas.create_ad_label, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleCreateAdLabel(client, validation.data);
+      }
+
+      case 'list_ad_labels': {
+        const validation = validateArgs(apiSchemas.list_ad_labels, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleListAdLabels(client, validation.data);
+      }
+
+      // ==================== CREATIVE PREVIEW ====================
+      case 'preview_creative': {
+        const validation = validateArgs(apiSchemas.preview_creative, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handlePreviewCreative(client, validation.data);
+      }
+
+      // ==================== BUDGET SCHEDULE ====================
+      case 'create_budget_schedule': {
+        const validation = validateArgs(apiSchemas.create_budget_schedule, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleCreateBudgetSchedule(client, validation.data);
+      }
+
+      case 'get_budget_schedules': {
+        const validation = validateArgs(apiSchemas.get_budget_schedules, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleGetBudgetSchedules(client, validation.data);
+      }
+
+      case 'update_budget_schedule': {
+        const validation = validateArgs(apiSchemas.update_budget_schedule, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleUpdateBudgetSchedule(client, validation.data);
+      }
+
+      case 'delete_budget_schedule': {
+        const validation = validateArgs(apiSchemas.delete_budget_schedule, args);
+        if (!validation.success) return formatValidationError(validation.error);
+        return await handleDeleteBudgetSchedule(client, validation.data);
+      }
+
       default:
         return {
           content: [{ type: 'text', text: `Tool desconhecida: ${name}` }],
@@ -1903,24 +2409,40 @@ async function handleCreateCampaign(
   client: MetaClient,
   args: CreateCampaignArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  // Validação: daily_budget e lifetime_budget são mutuamente exclusivos
+  if (args.daily_budget && args.lifetime_budget) {
+    return {
+      content: [{
+        type: 'text',
+        text: `# Erro de Validação\n\n**daily_budget** e **lifetime_budget** são mutuamente exclusivos. Use apenas um deles.\n\n- daily_budget: orçamento por dia (CBO)\n- lifetime_budget: orçamento total no período (requer start_time e stop_time)`,
+      }],
+    };
+  }
+
   // Sempre incluir is_adset_budget_sharing_enabled para evitar erro 4834011
   const is_adset_budget_sharing_enabled = args.is_adset_budget_sharing_enabled ?? false;
-  
+
   // G-04: Default inteligente para bid_strategy em campanhas CBO
-  // Quando daily_budget é definido sem bid_strategy, usa LOWEST_COST_WITHOUT_CAP
-  // para evitar que o Meta infira LOWEST_COST_WITH_BID_CAP (erro 1815857)
-  const bid_strategy = args.bid_strategy ?? (args.daily_budget ? 'LOWEST_COST_WITHOUT_CAP' : undefined);
-  
+  const hasBudget = args.daily_budget || args.lifetime_budget;
+  const bid_strategy = args.bid_strategy ?? (hasBudget ? 'LOWEST_COST_WITHOUT_CAP' : undefined);
+
   const result = await client.createCampaign({
     name: args.name,
     objective: args.objective,
     status: args.status,
     daily_budget: args.daily_budget,
+    lifetime_budget: args.lifetime_budget,
+    spend_cap: args.spend_cap,
+    buying_type: args.buying_type,
     bid_strategy,
     special_ad_categories: args.special_ad_categories,
     is_adset_budget_sharing_enabled,
+    start_time: args.start_time,
+    stop_time: args.stop_time,
+    is_skadnetwork_attribution: args.is_skadnetwork_attribution,
+    promoted_object: args.promoted_object,
   });
-  
+
   let successMessage = `# Campanha Criada\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Objetivo:** ${args.objective}\n**Status:** ${args.status}\n**Budget Sharing:** ${is_adset_budget_sharing_enabled}`;
   if (bid_strategy) {
     successMessage += `\n**Bid Strategy:** ${bid_strategy}`;
@@ -1928,7 +2450,19 @@ async function handleCreateCampaign(
   if (args.daily_budget) {
     successMessage += `\n**Daily Budget:** R$ ${(args.daily_budget / 100).toFixed(2)}`;
   }
-  
+  if (args.lifetime_budget) {
+    successMessage += `\n**Lifetime Budget:** R$ ${(args.lifetime_budget / 100).toFixed(2)}`;
+  }
+  if (args.spend_cap) {
+    successMessage += `\n**Spend Cap:** R$ ${(args.spend_cap / 100).toFixed(2)}`;
+  }
+  if (args.buying_type) {
+    successMessage += `\n**Buying Type:** ${args.buying_type}`;
+  }
+  if (args.start_time || args.stop_time) {
+    successMessage += `\n**Agendamento:** ${args.start_time || 'imediato'} até ${args.stop_time || 'indefinido'}`;
+  }
+
   return {
     content: [
       {
@@ -1943,16 +2477,13 @@ async function handleUpdateCampaign(
   client: MetaClient,
   args: UpdateCampaignArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  await client.updateCampaign(args.campaign_id, {
-    name: args.name,
-    status: args.status,
-    daily_budget: args.daily_budget,
-  });
+  const { campaign_id, ...updateParams } = args;
+  await client.updateCampaign(campaign_id, updateParams);
   return {
     content: [
       {
         type: 'text',
-        text: `# Campanha Atualizada\n\n**ID:** ${args.campaign_id}\n\nAlterações aplicadas com sucesso.`,
+        text: `# Campanha Atualizada\n\n**ID:** ${campaign_id}\n\nAlterações aplicadas com sucesso.`,
       },
     ],
   };
@@ -2075,6 +2606,26 @@ async function handleCreateAdset(
     }
   }
   
+  // Validação: daily_budget e lifetime_budget são mutuamente exclusivos
+  if (args.daily_budget && args.lifetime_budget) {
+    return {
+      content: [{
+        type: 'text',
+        text: `# Erro de Validação\n\n**daily_budget** e **lifetime_budget** são mutuamente exclusivos. Use apenas um deles.`,
+      }],
+    };
+  }
+
+  // Validação: adset_schedule requer lifetime_budget
+  if (args.adset_schedule && !args.lifetime_budget) {
+    return {
+      content: [{
+        type: 'text',
+        text: `# Erro de Validação\n\n**adset_schedule** (dayparting) requer **lifetime_budget**. Não é possível usar dayparting com daily_budget.`,
+      }],
+    };
+  }
+
   const result = await client.createAdSet({
     name: args.name,
     campaign_id: args.campaign_id,
@@ -2082,15 +2633,29 @@ async function handleCreateAdset(
     optimization_goal: args.optimization_goal,
     targeting,
     daily_budget: args.daily_budget,
+    lifetime_budget: args.lifetime_budget,
     status: args.status,
     bid_strategy,
     bid_amount: args.bid_amount,
+    bid_constraints: args.bid_constraints,
     promoted_object: args.promoted_object,
     start_time: args.start_time,
     end_time: args.end_time,
     attribution_spec: args.attribution_spec,
     is_incremental_attribution_enabled: args.is_incremental_attribution_enabled,
     excluded_custom_audiences: args.excluded_custom_audiences,
+    destination_type: args.destination_type,
+    is_dynamic_creative: args.is_dynamic_creative,
+    adset_schedule: args.adset_schedule,
+    pacing_type: args.pacing_type,
+    frequency_control_specs: args.frequency_control_specs,
+    daily_min_spend_target: args.daily_min_spend_target,
+    daily_spend_cap: args.daily_spend_cap,
+    value_rule_set_id: args.value_rule_set_id,
+    value_rules_applied: args.value_rules_applied,
+    dsa_beneficiary: args.dsa_beneficiary,
+    dsa_payor: args.dsa_payor,
+    adlabels: args.adlabels,
   });
   
   let successMessage = `# Ad Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Bid Strategy:** ${bid_strategy}\n**Advantage+ Audience:** ${advantageAudience === 1 ? 'Ativado' : 'Desativado'}`;
@@ -2114,11 +2679,31 @@ async function handleCreateAdset(
   if (args.attribution_spec) {
     successMessage += `\n**Attribution Spec:** ${JSON.stringify(args.attribution_spec)}`;
   }
-  
+
+  if (args.lifetime_budget) {
+    successMessage += `\n**Lifetime Budget:** R$ ${(args.lifetime_budget / 100).toFixed(2)}`;
+  }
+
+  if (args.destination_type) {
+    successMessage += `\n**Destination Type:** ${args.destination_type}`;
+  }
+
+  if (args.is_dynamic_creative) {
+    successMessage += `\n**Dynamic Creative:** Ativado`;
+  }
+
+  if (args.adset_schedule) {
+    successMessage += `\n**Dayparting:** ${args.adset_schedule.length} período(s) configurado(s)`;
+  }
+
+  if (args.frequency_control_specs) {
+    successMessage += `\n**Frequency Control:** ${JSON.stringify(args.frequency_control_specs)}`;
+  }
+
   if (warnings.length > 0) {
     successMessage += `\n\n---\n\n${warnings.join('\n\n')}`;
   }
-  
+
   return {
     content: [
       {
@@ -2133,17 +2718,13 @@ async function handleUpdateAdset(
   client: MetaClient,
   args: UpdateAdsetArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  await client.updateAdSet(args.adset_id, {
-    name: args.name,
-    status: args.status,
-    daily_budget: args.daily_budget,
-    targeting: args.targeting,
-  });
+  const { adset_id, ...updateParams } = args;
+  await client.updateAdSet(adset_id, updateParams);
   return {
     content: [
       {
         type: 'text',
-        text: `# Ad Set Atualizado\n\n**ID:** ${args.adset_id}\n\nAlterações aplicadas com sucesso.`,
+        text: `# Ad Set Atualizado\n\n**ID:** ${adset_id}\n\nAlterações aplicadas com sucesso.`,
       },
     ],
   };
@@ -2235,12 +2816,32 @@ async function handleCreateAd(
     adset_id: args.adset_id,
     creative: { creative_id: args.creative_id },
     status: args.status,
+    tracking_specs: args.tracking_specs,
+    ad_schedule_start_time: args.ad_schedule_start_time,
+    ad_schedule_end_time: args.ad_schedule_end_time,
+    conversion_domain: args.conversion_domain,
+    adlabels: args.adlabels,
   });
+
+  let successMessage = `# Anúncio Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}`;
+  if (args.conversion_domain) {
+    successMessage += `\n**Conversion Domain:** ${args.conversion_domain}`;
+  }
+  if (args.ad_schedule_start_time || args.ad_schedule_end_time) {
+    successMessage += `\n**Agendamento:** ${args.ad_schedule_start_time || 'imediato'} até ${args.ad_schedule_end_time || 'indefinido'}`;
+  }
+  if (args.tracking_specs) {
+    successMessage += `\n**Tracking Specs:** ${args.tracking_specs.length} spec(s) configurado(s)`;
+  }
+  if (args.adlabels) {
+    successMessage += `\n**Labels:** ${args.adlabels.length} label(s)`;
+  }
+
   return {
     content: [
       {
         type: 'text',
-        text: `# Anúncio Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}`,
+        text: successMessage,
       },
     ],
   };
@@ -2250,15 +2851,13 @@ async function handleUpdateAd(
   client: MetaClient,
   args: UpdateAdArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  await client.updateAd(args.ad_id, {
-    name: args.name,
-    status: args.status,
-  });
+  const { ad_id, ...updateParams } = args;
+  await client.updateAd(ad_id, updateParams);
   return {
     content: [
       {
         type: 'text',
-        text: `# Anúncio Atualizado\n\n**ID:** ${args.ad_id}\n\nAlterações aplicadas com sucesso.`,
+        text: `# Anúncio Atualizado\n\n**ID:** ${ad_id}\n\nAlterações aplicadas com sucesso.`,
       },
     ],
   };
@@ -2330,25 +2929,27 @@ async function handleCreateCreative(
   client: MetaClient,
   args: CreateCreativeArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  // Validação básica
-  if (!args.object_story_spec) {
+  // Validação: precisa de object_story_spec OU object_story_id
+  if (!args.object_story_spec && !args.object_story_id) {
     return {
       content: [
         {
           type: 'text',
           text: `# Erro de Validação
 
-O campo \`object_story_spec\` é obrigatório para criar um criativo.
+É obrigatório fornecer \`object_story_spec\` ou \`object_story_id\`.
 
-**Exemplo de estrutura:**
+**object_story_spec** — criar novo criativo:
 \`\`\`json
 {
   "page_id": "ID_DA_PAGINA",
-  "link_data": {
-    "link": "https://seu-site.com",
-    "message": "Texto do post"
-  }
+  "link_data": { "link": "https://seu-site.com", "message": "Texto" }
 }
+\`\`\`
+
+**object_story_id** — promover post existente:
+\`\`\`
+"PAGE_ID_POST_ID"
 \`\`\`
 
 **Dica:** Use \`list_facebook_pages\` para obter o page_id.`,
@@ -2357,42 +2958,56 @@ O campo \`object_story_spec\` é obrigatório para criar um criativo.
     };
   }
 
-  const spec = args.object_story_spec as { page_id?: string; instagram_user_id?: string };
-  
-  if (!spec.page_id) {
-    return {
-      content: [
-        {
-          type: 'text',
-          text: `# Erro de Validação
-
-O campo \`page_id\` é obrigatório no \`object_story_spec\`.
-
-**Dica:** Use \`list_facebook_pages\` para obter o ID da sua página.`,
-        },
-      ],
-    };
+  // Se usar object_story_spec, validar page_id
+  if (args.object_story_spec) {
+    const spec = args.object_story_spec as { page_id?: string };
+    if (!spec.page_id) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `# Erro de Validação\n\nO campo \`page_id\` é obrigatório no \`object_story_spec\`.\n\n**Dica:** Use \`list_facebook_pages\` para obter o ID da sua página.`,
+          },
+        ],
+      };
+    }
   }
 
   const result = await client.createCreative({
     name: args.name,
     object_story_spec: args.object_story_spec,
+    object_story_id: args.object_story_id,
     creative_features_spec: args.creative_features_spec,
+    asset_feed_spec: args.asset_feed_spec,
+    image_hash: args.image_hash,
+    image_url: args.image_url,
+    url_tags: args.url_tags,
+    platform_customizations: args.platform_customizations,
   });
-  
-  let successMessage = `# Criativo Criado
 
-**ID:** ${result.id}
-**Nome:** ${args.name}
-**Page ID:** ${spec.page_id}`;
+  let successMessage = `# Criativo Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}`;
 
-  if (spec.instagram_user_id) {
-    successMessage += `\n**Instagram ID:** ${spec.instagram_user_id}`;
+  if (args.object_story_id) {
+    successMessage += `\n**Post Existente:** ${args.object_story_id}`;
+  }
+
+  if (args.object_story_spec) {
+    const spec = args.object_story_spec as { page_id?: string; instagram_user_id?: string };
+    if (spec.page_id) successMessage += `\n**Page ID:** ${spec.page_id}`;
+    if (spec.instagram_user_id) successMessage += `\n**Instagram ID:** ${spec.instagram_user_id}`;
   }
 
   if (args.creative_features_spec) {
     const features = Object.keys(args.creative_features_spec);
     successMessage += `\n**Advantage+ Creative:** ${features.length} feature(s) configurada(s) (${features.join(', ')})`;
+  }
+
+  if (args.url_tags) {
+    successMessage += `\n**URL Tags:** ${args.url_tags}`;
+  }
+
+  if (args.platform_customizations) {
+    successMessage += `\n**Platform Customizations:** Configurado`;
   }
 
   successMessage += `\n\n**Próximo passo:** Use este creative_id ao criar um anúncio com \`create_ad\`.`;
@@ -3291,6 +3906,307 @@ async function handleExecuteApi(
       {
         type: 'text',
         text: `# Resultado da API${warningsText}\n\n**Método:** ${method}\n**Endpoint:** ${processedEndpoint}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``,
+      },
+    ],
+  };
+}
+
+// ==================== VIDEO HANDLERS ====================
+
+async function handleUploadVideo(
+  client: MetaClient,
+  args: UploadVideoArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.uploadVideo({
+    file_url: args.file_url,
+    title: args.title,
+    description: args.description,
+  });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Vídeo Enviado
+
+**Video ID:** ${result.id}
+${args.title ? `**Título:** ${args.title}` : ''}
+
+**Próximos passos:**
+1. Use \`get_video_status\` para verificar o processamento
+2. Após processado, use o video_id no \`create_creative\`:
+
+\`\`\`json
+{
+  "object_story_spec": {
+    "page_id": "ID_DA_PAGINA",
+    "video_data": {
+      "video_id": "${result.id}",
+      "message": "Texto do post"
+    }
+  }
+}
+\`\`\``,
+      },
+    ],
+  };
+}
+
+async function handleGetVideoStatus(
+  client: MetaClient,
+  args: GetVideoStatusArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.getVideoStatus(args.video_id);
+  const resultObj = result as Record<string, unknown>;
+
+  const status = resultObj.status as Record<string, unknown> | undefined;
+  const processingPhase = status?.video_status as string || 'unknown';
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Status do Vídeo
+
+**Video ID:** ${args.video_id}
+**Status:** ${processingPhase}
+${resultObj.title ? `**Título:** ${resultObj.title}` : ''}
+${resultObj.length ? `**Duração:** ${resultObj.length}s` : ''}
+${resultObj.source ? `**Source:** ${resultObj.source}` : ''}
+
+${formatObject(resultObj)}`,
+      },
+    ],
+  };
+}
+
+// ==================== VALUE RULES HANDLERS ====================
+
+async function handleCreateValueRuleSet(
+  client: MetaClient,
+  args: CreateValueRuleSetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.createValueRuleSet({
+    name: args.name,
+    rules: args.rules,
+  });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Value Rule Set Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n**Regras:** ${args.rules.length} regra(s)\n\n**Próximo passo:** Use \`update_adset\` com \`value_rule_set_id: "${result.id}"\` e \`value_rules_applied: true\` para aplicar ao ad set.`,
+      },
+    ],
+  };
+}
+
+async function handleListValueRuleSets(
+  client: MetaClient,
+  args: ListValueRuleSetsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listValueRuleSets(args.fields);
+  const data = result.data || [];
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Value Rule Sets\n\nEncontrados ${data.length} rule set(s):\n\n${data.length > 0 ? data.map((rs: Record<string, unknown>) => `- **ID:** ${rs.id} | **Nome:** ${rs.name || 'N/A'}`).join('\n') : 'Nenhum rule set encontrado.'}`,
+      },
+    ],
+  };
+}
+
+async function handleGetValueRuleSet(
+  client: MetaClient,
+  args: GetValueRuleSetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.getValueRuleSet(args.value_rule_set_id, args.fields);
+  const resultObj = result as Record<string, unknown>;
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Value Rule Set: ${resultObj.name || args.value_rule_set_id}\n\n${formatObject(resultObj)}`,
+      },
+    ],
+  };
+}
+
+async function handleUpdateValueRuleSet(
+  client: MetaClient,
+  args: UpdateValueRuleSetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateValueRuleSet(args.value_rule_set_id, {
+    name: args.name,
+    rules: args.rules,
+  });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Value Rule Set Atualizado\n\n**ID:** ${args.value_rule_set_id}\n\nAlterações aplicadas com sucesso.`,
+      },
+    ],
+  };
+}
+
+async function handleDeleteValueRuleSet(
+  client: MetaClient,
+  args: DeleteValueRuleSetArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.deleteValueRuleSet(args.value_rule_set_id);
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Value Rule Set Excluído\n\n**ID:** ${args.value_rule_set_id}\n\nO rule set foi excluído com sucesso.`,
+      },
+    ],
+  };
+}
+
+// ==================== AD LABELS HANDLERS ====================
+
+async function handleCreateAdLabel(
+  client: MetaClient,
+  args: CreateAdLabelArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.createAdLabel({ name: args.name });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Ad Label Criado\n\n**ID:** ${result.id}\n**Nome:** ${args.name}\n\n**Uso:** Adicione este label a campanhas, ad sets ou ads usando o campo \`adlabels: [{name: "${args.name}"}]\` ao criar ou atualizar.`,
+      },
+    ],
+  };
+}
+
+async function handleListAdLabels(
+  client: MetaClient,
+  args: ListAdLabelsArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.listAdLabels(args.fields);
+  const data = result.data || [];
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Ad Labels\n\nEncontrados ${data.length} label(s):\n\n${data.length > 0 ? data.map((label: Record<string, unknown>) => `- **ID:** ${label.id} | **Nome:** ${label.name || 'N/A'}`).join('\n') : 'Nenhum label encontrado.'}`,
+      },
+    ],
+  };
+}
+
+// ==================== CREATIVE PREVIEW HANDLER ====================
+
+async function handlePreviewCreative(
+  client: MetaClient,
+  args: PreviewCreativeArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.previewCreative(args.creative_id, args.ad_format);
+  const data = (result as { data?: Array<Record<string, unknown>> }).data || [];
+
+  if (data.length === 0) {
+    return {
+      content: [
+        {
+          type: 'text',
+          text: `# Preview do Criativo\n\n**Creative ID:** ${args.creative_id}\n**Formato:** ${args.ad_format}\n\nNenhum preview disponível para este formato.`,
+        },
+      ],
+    };
+  }
+
+  const preview = data[0];
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Preview do Criativo\n\n**Creative ID:** ${args.creative_id}\n**Formato:** ${args.ad_format}\n\n**HTML Preview:**\n\`\`\`html\n${preview.body || 'N/A'}\n\`\`\``,
+      },
+    ],
+  };
+}
+
+// ==================== BUDGET SCHEDULE HANDLERS ====================
+
+async function handleCreateBudgetSchedule(
+  client: MetaClient,
+  args: CreateBudgetScheduleArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.createBudgetSchedule(args.campaign_id, {
+    budget_value: args.budget_value,
+    budget_value_type: args.budget_value_type,
+    time_start: args.time_start,
+    time_end: args.time_end,
+  });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Budget Schedule Criado\n\n**ID:** ${result.id}\n**Campanha:** ${args.campaign_id}\n**Budget:** R$ ${(args.budget_value / 100).toFixed(2)}\n**Período:** ${args.time_start} até ${args.time_end}`,
+      },
+    ],
+  };
+}
+
+async function handleGetBudgetSchedules(
+  client: MetaClient,
+  args: GetBudgetSchedulesArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const result = await client.getBudgetSchedules(args.campaign_id);
+  const data = (result as { data?: Array<Record<string, unknown>> }).data || [];
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Budget Schedules da Campanha ${args.campaign_id}\n\nEncontrados ${data.length} schedule(s):\n\n${data.length > 0 ? data.map((s: Record<string, unknown>) => `- **ID:** ${s.id} | **Budget:** ${s.budget_value} | **Período:** ${s.time_start} - ${s.time_end}`).join('\n') : 'Nenhum schedule encontrado.'}`,
+      },
+    ],
+  };
+}
+
+async function handleUpdateBudgetSchedule(
+  client: MetaClient,
+  args: UpdateBudgetScheduleArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.updateBudgetSchedule(args.budget_schedule_id, {
+    budget_value: args.budget_value,
+    time_start: args.time_start,
+    time_end: args.time_end,
+  });
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Budget Schedule Atualizado\n\n**ID:** ${args.budget_schedule_id}\n\nAlterações aplicadas com sucesso.`,
+      },
+    ],
+  };
+}
+
+async function handleDeleteBudgetSchedule(
+  client: MetaClient,
+  args: DeleteBudgetScheduleArgs
+): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  await client.deleteBudgetSchedule(args.budget_schedule_id);
+
+  return {
+    content: [
+      {
+        type: 'text',
+        text: `# Budget Schedule Excluído\n\n**ID:** ${args.budget_schedule_id}\n\nO schedule foi excluído com sucesso.`,
       },
     ],
   };
