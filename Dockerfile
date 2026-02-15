@@ -2,10 +2,6 @@
 FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Cache bust: Railway sets this arg per commit, invalidating all layers below
-ARG RAILWAY_GIT_COMMIT_SHA
-RUN echo "build: ${RAILWAY_GIT_COMMIT_SHA:-local}"
-
 COPY package*.json ./
 RUN npm ci
 
@@ -20,6 +16,10 @@ RUN npm run build
 # ── Production stage ──
 FROM node:20-alpine
 WORKDIR /app
+
+# Cache bust: unique per deploy, forces fresh COPY from builder
+ARG RAILWAY_GIT_COMMIT_SHA
+RUN echo "deploy: ${RAILWAY_GIT_COMMIT_SHA:-local}"
 
 COPY package*.json ./
 RUN npm ci --omit=dev
