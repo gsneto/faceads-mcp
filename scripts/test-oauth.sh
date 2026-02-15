@@ -9,7 +9,6 @@
 # Prerequisites:
 #   - Server running: node dist/index.js --http --port <port>
 #   - DATABASE_URL configured
-#   - MCP_REQUIRE_API_KEY=true (to test both OAuth and API key paths)
 #   - jq installed
 #
 

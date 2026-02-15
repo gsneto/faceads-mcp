@@ -2,7 +2,7 @@
  * HTTP Server Transport para MCP
  *
  * Expõe o MCP server via Streamable HTTP transport (POST /mcp, GET /mcp, DELETE /mcp).
- * Suporta multi-tenant via headers X-Meta-Access-Token e X-Meta-Ad-Account-Id.
+ * Auth: OAuth 2.0 Bearer token only. Headers X-Meta-* como override para debug.
  */
 
 import express from 'express';
@@ -13,11 +13,9 @@ import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 import { withAuthContext, type AuthContext } from '../utils/auth-context.js';
-import { apiKeyAuth, getApiKeyInfo, isApiKeyAuthEnabled } from '../middleware/auth.js';
 import { usageLogger } from '../middleware/usage-logger.js';
 import { isDatabaseConfigured, getPrisma } from '../db/prisma.js';
 import { decryptToken } from '../db/crypto.js';
-import { adminRouter } from '../routes/admin.js';
 import { oauthRouter } from '../routes/oauth.js';
 import { scopeToPermission } from '../auth/oauth-utils.js';
 
@@ -41,7 +39,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   app.use((_req: Request, res: Response, next) => {
     res.header('Access-Control-Allow-Origin', '*');
     res.header('Access-Control-Allow-Methods', 'GET, POST, DELETE, OPTIONS');
-    res.header('Access-Control-Allow-Headers', 'Content-Type, X-API-Key, X-Meta-Access-Token, X-Meta-Ad-Account-Id, Mcp-Session-Id, Authorization');
+    res.header('Access-Control-Allow-Headers', 'Content-Type, X-Meta-Access-Token, X-Meta-Ad-Account-Id, Mcp-Session-Id, Authorization');
     res.header('Access-Control-Expose-Headers', 'Mcp-Session-Id');
     if (_req.method === 'OPTIONS') {
       res.status(204).end();
@@ -53,7 +51,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   // Usage logging
   app.use(usageLogger());
 
-  // ── Public routes (BEFORE apiKeyAuth) ──
+  // ── Public routes ──
 
   // Health check
   app.get('/health', (_req: Request, res: Response) => {
@@ -61,7 +59,6 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       status: 'ok',
       service: 'fb-marketing-mcp',
       timestamp: new Date().toISOString(),
-      apiKeyAuthEnabled: isApiKeyAuthEnabled(),
       activeSessions: sessions.size,
     });
   });
@@ -91,143 +88,95 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
     });
   });
 
-  // OAuth routes (register, authorize, token)
+  // OAuth routes (register, authorize, token, settings)
   if (isDatabaseConfigured()) {
     app.use('/oauth', oauthRouter);
     console.log('  OAuth 2.0: /oauth/* (database-backed)');
   }
 
-  // ── API key auth (after public routes) ──
-  app.use(apiKeyAuth());
-
-  // Rate limiting (por API key ou IP)
-  const freeLimiter = rateLimit({
+  // Rate limiting (por userId do OAuth ou IP)
+  const mcpLimiter = rateLimit({
     windowMs: 60 * 60 * 1000, // 1 hora
     limit: 100,
     keyGenerator: (req: Request) => {
-      const keyInfo = getApiKeyInfo(req);
-      return keyInfo?.key ?? ipKeyGenerator(req.ip ?? '0.0.0.0');
-    },
-    skip: (req: Request) => {
-      const keyInfo = getApiKeyInfo(req);
-      // Pro e Enterprise sem rate limit
-      return keyInfo?.tier === 'pro' || keyInfo?.tier === 'enterprise';
+      // Try to extract userId from Bearer token for per-user limiting
+      // Falls back to IP if no auth header
+      const authHeader = req.headers['authorization'] as string | undefined;
+      if (authHeader?.startsWith('Bearer ')) {
+        // Use the token itself as key (unique per user session)
+        return `bearer:${authHeader.slice(7, 27)}`; // First 20 chars as key
+      }
+      return `ip:${ipKeyGenerator(req.ip ?? '0.0.0.0')}`;
     },
     standardHeaders: 'draft-7',
     legacyHeaders: false,
-    message: { error: 'Rate limit exceeded', message: 'Free tier: 100 requests/hour. Upgrade for unlimited access.' },
+    message: { error: 'Rate limit exceeded', message: '100 requests/hour. Try again later.' },
   });
-  app.use('/mcp', freeLimiter);
-
-  // ── Admin API (requires DATABASE_URL + MCP_ADMIN_KEY) ──
-  if (isDatabaseConfigured()) {
-    app.use('/admin', adminRouter);
-    console.log('  Admin API: /admin (database-backed)');
-  }
+  app.use('/mcp', mcpLimiter);
 
   // ── Mapa de sessões (stateful transport) ──
   const sessions = new Map<string, { transport: StreamableHTTPServerTransport; server: Server }>();
 
   /**
    * Extrai auth context dos headers HTTP.
-   * Priority: 0) Bearer token  1) Headers  2) DB token (via API key user)  3) env fallback
+   * Priority: 1) Bearer token → resolve Meta token do DB  2) Headers X-Meta-* override  3) null → 401
    */
   async function extractAuthContext(req: Request): Promise<AuthContext | null> {
-    const keyInfo = getApiKeyInfo(req);
-
-    // 0) Bearer token — OAuth 2.0 (Claude Connectors)
     const authHeader = req.headers['authorization'] as string | undefined;
-    if (authHeader?.startsWith('Bearer ')) {
-      const bearerToken = authHeader.slice(7);
-      if (isDatabaseConfigured()) {
-        try {
-          const prisma = getPrisma();
-          const oauthToken = await prisma.oAuthAccessToken.findUnique({
-            where: { token: bearerToken },
-            include: { user: true },
-          });
 
-          if (oauthToken && oauthToken.expiresAt > new Date()) {
-            const oauthUserId = oauthToken.userId;
-            const permissions = scopeToPermission(oauthToken.scope);
-
-            // Resolve Meta token for this user
-            const metaToken = await prisma.metaToken.findFirst({
-              where: { userId: oauthUserId },
-              orderBy: { createdAt: 'desc' },
-            });
-
-            return {
-              accessToken: metaToken ? decryptToken(metaToken.accessToken) : '',
-              adAccountId: metaToken?.adAccountId ?? '',
-              userId: oauthUserId,
-              permissions,
-              tier: 'pro', // OAuth users get pro tier
-            };
-          }
-        } catch (err) {
-          console.error('[auth] Bearer token lookup failed:', err);
-        }
-      }
-      // Invalid/expired bearer token — return null (will trigger 401)
+    if (!authHeader?.startsWith('Bearer ')) {
       return null;
     }
 
-    const permissions = keyInfo?.permissions ?? 'readwrite';
-    const tier = keyInfo?.tier ?? 'free';
-    const userId = keyInfo?.userId;
-
-    // 1) Explicit headers — power users
-    const accessToken = req.headers['x-meta-access-token'] as string | undefined;
-    const adAccountId = req.headers['x-meta-ad-account-id'] as string | undefined;
-
-    if (accessToken && adAccountId) {
-      return {
-        accessToken,
-        adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
-        apiVersion: (req.headers['x-meta-api-version'] as string) || undefined,
-        userId,
-        permissions,
-        tier,
-      };
+    const bearerToken = authHeader.slice(7);
+    if (!isDatabaseConfigured()) {
+      return null;
     }
 
-    // 2) DB token — resolve from user's stored Meta tokens
-    if (isDatabaseConfigured() && userId) {
-      try {
-        const prisma = getPrisma();
-        const metaToken = await prisma.metaToken.findFirst({
-          where: { userId },
-          orderBy: { createdAt: 'desc' },
-        });
+    try {
+      const prisma = getPrisma();
+      const oauthToken = await prisma.oAuthAccessToken.findUnique({
+        where: { token: bearerToken },
+        include: { user: true },
+      });
 
-        if (metaToken) {
-          return {
-            accessToken: decryptToken(metaToken.accessToken),
-            adAccountId: metaToken.adAccountId,
-            userId,
-            permissions,
-            tier,
-          };
-        }
-      } catch (err) {
-        console.error('[auth] Failed to resolve Meta token from DB:', err);
+      if (!oauthToken || oauthToken.expiresAt <= new Date()) {
+        return null;
       }
-    }
 
-    // 3) No credentials — MetaClient will fall back to env vars
-    // Still set permissions/tier if we have key info
-    if (keyInfo) {
+      const oauthUserId = oauthToken.userId;
+      const permissions = scopeToPermission(oauthToken.scope);
+
+      // Check for X-Meta-* header overrides (debug)
+      const headerAccessToken = req.headers['x-meta-access-token'] as string | undefined;
+      const headerAdAccountId = req.headers['x-meta-ad-account-id'] as string | undefined;
+
+      if (headerAccessToken && headerAdAccountId) {
+        return {
+          accessToken: headerAccessToken,
+          adAccountId: headerAdAccountId.startsWith('act_') ? headerAdAccountId : `act_${headerAdAccountId}`,
+          apiVersion: (req.headers['x-meta-api-version'] as string) || undefined,
+          userId: oauthUserId,
+          permissions,
+        };
+      }
+
+      // Resolve Meta token from DB for this user
+      const metaToken = await prisma.metaToken.findFirst({
+        where: { userId: oauthUserId },
+        orderBy: { createdAt: 'desc' },
+      });
+
       return {
-        accessToken: '',
-        adAccountId: '',
-        userId,
+        accessToken: metaToken ? decryptToken(metaToken.accessToken) : '',
+        adAccountId: metaToken?.adAccountId ?? '',
+        userId: oauthUserId,
         permissions,
-        tier,
       };
+    } catch (err) {
+      console.error('[auth] Bearer token lookup failed:', err);
+      return null;
     }
-
-    return null;
   }
 
   /**
@@ -253,6 +202,12 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
         res.status(401).json({ error: 'invalid_token', error_description: 'Bearer token is invalid or expired' });
         return;
       }
+    } else {
+      // No Bearer token at all → 401
+      const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
+      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl}"`);
+      res.status(401).json({ error: 'unauthorized', error_description: 'Authorization: Bearer token required' });
+      return;
     }
     next();
   }
@@ -354,7 +309,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
     console.log(`  MCP endpoint: POST/GET/DELETE http://0.0.0.0:${port}/mcp (also at /)`);
     console.log(`  Health check: GET http://0.0.0.0:${port}/health`);
     console.log(`  OAuth metadata: GET ${BASE_URL}/.well-known/oauth-authorization-server`);
-    console.log(`  API key auth: ${isApiKeyAuthEnabled() ? 'ENABLED' : 'DISABLED'}`);
+    console.log(`  Auth: OAuth 2.0 Bearer token only`);
     console.log(`  Base URL: ${BASE_URL}`);
   });
 

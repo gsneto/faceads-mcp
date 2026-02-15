@@ -15,27 +15,11 @@ model User {
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
 
-  apiKeys            ApiKey[]
   metaTokens         MetaToken[]
   authorizationCodes AuthorizationCode[]
   oauthAccessTokens  OAuthAccessToken[]
 
   @@map("users")
-}
-
-model ApiKey {
-  key         String   @id @default(uuid())
-  userId      String   @map("user_id")
-  tier        String   @default("free")
-  permissions String   @default("read")
-  isActive    Boolean  @default(true) @map("is_active")
-  createdAt   DateTime @default(now()) @map("created_at")
-  description String?
-
-  user User @relation(fields: [userId], references: [id])
-
-  @@index([userId])
-  @@map("api_keys")
 }
 
 model MetaToken {
