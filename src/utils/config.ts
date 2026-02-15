@@ -6,6 +6,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { getAuthContext } from './auth-context.js';
 
 export interface MetaConfig {
   accessToken: string;
@@ -36,7 +37,11 @@ function loadDotEnv(): void {
       const eqIndex = trimmed.indexOf('=');
       if (eqIndex === -1) continue;
       const key = trimmed.slice(0, eqIndex).trim();
-      const value = trimmed.slice(eqIndex + 1).trim();
+      let value = trimmed.slice(eqIndex + 1).trim();
+      // Strip surrounding quotes ("..." or '...')
+      if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+        value = value.slice(1, -1);
+      }
       if (!process.env[key]) {
         process.env[key] = value;
       }
@@ -75,9 +80,15 @@ export function getMetaConfig(): MetaConfig | null {
 }
 
 /**
- * Verifica se a API Meta está configurada
+ * Verifica se a API Meta está configurada (via auth context ou env vars)
  */
 export function isMetaConfigured(): boolean {
+  // Check auth context first (HTTP multi-tenant with DB tokens)
+  const authCtx = getAuthContext();
+  if (authCtx && authCtx.accessToken && authCtx.adAccountId) {
+    return true;
+  }
+  // Fallback to env vars (stdio mode)
   return getMetaConfig() !== null;
 }
 

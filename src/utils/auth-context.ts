@@ -11,6 +11,9 @@ export interface AuthContext {
   accessToken: string;
   adAccountId: string;
   apiVersion?: string;
+  userId?: string;
+  permissions?: 'read' | 'readwrite';
+  tier?: 'free' | 'pro' | 'enterprise';
 }
 
 const authStorage = new AsyncLocalStorage<AuthContext>();

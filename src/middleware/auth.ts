@@ -1,22 +1,26 @@
 /**
  * Middleware de autenticação por API Key
  *
- * Valida o header X-API-Key contra uma lista de keys autorizadas.
- * Keys são carregadas de variáveis de ambiente.
+ * Valida o header X-API-Key contra:
+ * 1. PostgreSQL via Prisma (se DATABASE_URL configurado)
+ * 2. Variáveis de ambiente MCP_API_KEYS (fallback)
  */
 
 import type { Request, Response, NextFunction } from 'express';
+import { getPrisma, isDatabaseConfigured } from '../db/prisma.js';
 
 export interface ApiKeyInfo {
   key: string;
   tier: 'free' | 'pro' | 'enterprise';
+  permissions: 'read' | 'readwrite';
+  userId?: string;
 }
 
 /**
  * Carrega API keys das variáveis de ambiente.
  *
- * Formato: MCP_API_KEYS=key1:pro,key2:enterprise,key3:free
- * Se MCP_REQUIRE_API_KEY não for "true", auth é desabilitada.
+ * Formato: MCP_API_KEYS=key1:pro:readwrite,key2:enterprise:read,key3:free
+ * Tier default: free. Permissions default: readwrite (backwards compat).
  */
 function loadApiKeys(): Map<string, ApiKeyInfo> {
   const keys = new Map<string, ApiKeyInfo>();
@@ -26,16 +30,43 @@ function loadApiKeys(): Map<string, ApiKeyInfo> {
     const trimmed = entry.trim();
     if (!trimmed) continue;
 
-    const [key, tier] = trimmed.split(':');
+    const parts = trimmed.split(':');
+    const key = parts[0];
+    const tier = (parts[1] as ApiKeyInfo['tier']) || 'free';
+    const permissions = (parts[2] as ApiKeyInfo['permissions']) || 'readwrite';
+
     if (key) {
-      keys.set(key, {
-        key,
-        tier: (tier as ApiKeyInfo['tier']) || 'free',
-      });
+      keys.set(key, { key, tier, permissions });
     }
   }
 
   return keys;
+}
+
+/**
+ * Busca API key no Prisma (PostgreSQL).
+ */
+async function lookupKeyFromDatabase(apiKey: string): Promise<ApiKeyInfo | null> {
+  if (!isDatabaseConfigured()) return null;
+
+  try {
+    const prisma = getPrisma();
+    const record = await prisma.apiKey.findUnique({
+      where: { key: apiKey, isActive: true },
+    });
+
+    if (!record) return null;
+
+    return {
+      key: record.key,
+      tier: record.tier as ApiKeyInfo['tier'],
+      permissions: record.permissions as ApiKeyInfo['permissions'],
+      userId: record.userId,
+    };
+  } catch (err) {
+    console.error('[auth] Database lookup failed, falling back to env vars:', err);
+    return null;
+  }
 }
 
 /**
@@ -49,12 +80,28 @@ export function isApiKeyAuthEnabled(): boolean {
  * Middleware Express para validação de API key.
  */
 export function apiKeyAuth() {
-  const apiKeys = loadApiKeys();
+  const envKeys = loadApiKeys();
 
   return (req: Request, res: Response, next: NextFunction): void => {
     // Se auth não está habilitada, passa direto
     if (!isApiKeyAuthEnabled()) {
-      (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = { key: 'anonymous', tier: 'free' };
+      (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = {
+        key: 'anonymous',
+        tier: 'free',
+        permissions: 'readwrite',
+      };
+      next();
+      return;
+    }
+
+    // Bearer token present — skip API key check (validated in extractAuthContext)
+    const authHeader = req.headers['authorization'] as string | undefined;
+    if (authHeader?.startsWith('Bearer ')) {
+      (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = {
+        key: 'oauth-bearer',
+        tier: 'pro',
+        permissions: 'readwrite',
+      };
       next();
       return;
     }
@@ -64,23 +111,38 @@ export function apiKeyAuth() {
     if (!apiKey) {
       res.status(401).json({
         error: 'API key required',
-        message: 'Include X-API-Key header in your request',
+        message: 'Include X-API-Key or Authorization: Bearer header in your request',
       });
       return;
     }
 
-    const keyInfo = apiKeys.get(apiKey);
-    if (!keyInfo) {
-      res.status(403).json({
-        error: 'Invalid API key',
-        message: 'The provided API key is not valid',
-      });
+    // Try env vars first (sync, fast)
+    const envKeyInfo = envKeys.get(apiKey);
+    if (envKeyInfo) {
+      (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = envKeyInfo;
+      next();
       return;
     }
 
-    // Attach key info ao request
-    (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = keyInfo;
-    next();
+    // Try database (async)
+    lookupKeyFromDatabase(apiKey)
+      .then((dbKeyInfo) => {
+        if (dbKeyInfo) {
+          (req as Request & { apiKeyInfo?: ApiKeyInfo }).apiKeyInfo = dbKeyInfo;
+          next();
+        } else {
+          res.status(403).json({
+            error: 'Invalid API key',
+            message: 'The provided API key is not valid',
+          });
+        }
+      })
+      .catch(() => {
+        res.status(500).json({
+          error: 'Auth error',
+          message: 'Failed to validate API key',
+        });
+      });
   };
 }
 

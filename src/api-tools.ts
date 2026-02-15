@@ -10,6 +10,8 @@ import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { MetaClient, MetaClientError } from './meta-client.js';
 import { getConfigurationError, getMetaConfig, isMetaConfigured } from './utils/config.js';
+import { getAuthContext } from './utils/auth-context.js';
+import { checkPermission } from './auth/permissions.js';
 import {
   apiSchemas,
   validateArgs,
@@ -1825,6 +1827,19 @@ export async function handleApiTool(
     }
     if (name === 'get_andromeda') {
       return await handleGetAndromeda();
+    }
+
+    // ── Permission gate ──
+    const authCtx = getAuthContext();
+    if (authCtx?.permissions === 'read') {
+      // For execute_api, check the HTTP method
+      const method = (args as Record<string, unknown>)?.method as string | undefined;
+      if (!checkPermission(name, 'read', method)) {
+        return {
+          content: [{ type: 'text', text: `Permission denied: "${name}" requires write access. Your API key has read-only permissions.` }],
+          isError: true,
+        };
+      }
     }
 
     // Todas as outras tools requerem API configurada
