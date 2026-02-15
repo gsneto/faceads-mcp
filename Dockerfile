@@ -29,9 +29,6 @@ COPY prisma.config.ts ./
 # Copiar código compilado do builder (inclui dist/generated/prisma/)
 COPY --from=builder /app/dist/ ./dist/
 
-# Copiar Prisma client gerado para src/ (runtime do Prisma precisa)
-COPY --from=builder /app/src/generated/ ./src/generated/
-
 COPY docs/ ./docs/
 COPY scripts/docker-entrypoint.sh ./docker-entrypoint.sh
 
