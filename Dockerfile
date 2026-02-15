@@ -14,8 +14,7 @@ RUN npx prisma generate
 
 COPY tsconfig.json ./
 COPY src/ ./src/
-RUN npm run build && \
-    find dist/generated -name '*.js' -exec sed -i 's/from "\(\.\.\/\|\.\/\)\(.*\)\.ts"/from "\1\2.js"/g' {} +
+RUN npm run build
 
 # ── Production stage ──
 FROM node:20-alpine
