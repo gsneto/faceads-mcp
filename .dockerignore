@@ -1,6 +1,5 @@
 node_modules
 src
-scripts
 .git
 .gitignore
 .env
