@@ -5,6 +5,7 @@
  */
 
 import { getMetaConfig, getConfigurationError, MetaConfig } from './utils/config.js';
+import { getAuthContext } from './utils/auth-context.js';
 
 const META_GRAPH_URL = 'https://graph.facebook.com';
 
@@ -105,7 +106,24 @@ export interface CustomAudience {
 export class MetaClient {
   private config: MetaConfig;
 
+  /**
+   * Cria MetaClient com resolução de credenciais:
+   * 1. Auth context (HTTP multi-tenant, via AsyncLocalStorage)
+   * 2. Env vars / .env (modo stdio)
+   */
   constructor() {
+    // Prioridade 1: Auth context do request HTTP
+    const authCtx = getAuthContext();
+    if (authCtx) {
+      this.config = {
+        accessToken: authCtx.accessToken,
+        adAccountId: authCtx.adAccountId,
+        apiVersion: authCtx.apiVersion || 'v24.0',
+      };
+      return;
+    }
+
+    // Prioridade 2: Env vars (modo stdio)
     const config = getMetaConfig();
     if (!config) {
       throw new Error(getConfigurationError());
@@ -114,10 +132,10 @@ export class MetaClient {
   }
 
   /**
-   * Verifica se o cliente está configurado
+   * Verifica se o cliente está configurado (via auth context ou env vars)
    */
   static isConfigured(): boolean {
-    return getMetaConfig() !== null;
+    return getAuthContext() !== null || getMetaConfig() !== null;
   }
 
   /**

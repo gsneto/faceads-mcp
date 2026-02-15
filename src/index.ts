@@ -6,10 +6,13 @@
  * Duas camadas de funcionalidade:
  * 1. Camada de Consulta (read-only): Busca e navegação na documentação
  * 2. Camada de Execução (operacional): Tools que executam ações na API da Meta
+ *
+ * Dois modos de transporte:
+ * - stdio (default): Para uso local via MCP clients
+ * - HTTP (--http): Para hospedagem remota via Streamable HTTP
  */
 
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { CallToolRequestSchema, ListToolsRequestSchema } from '@modelcontextprotocol/sdk/types.js';
 import { docsTools, handleDocsTool, isDocsTool } from './docs-tools.js';
 import { apiTools, handleApiTool, isApiTool } from './api-tools.js';
@@ -23,8 +26,11 @@ const packageInfo = {
   version: '1.0.0',
 };
 
-async function main() {
-  // Criar servidor MCP
+/**
+ * Cria e configura um MCP Server com todos os handlers.
+ * Reutilizado por ambos os transportes (stdio e HTTP).
+ */
+function createMcpServer(): Server {
   const server = new Server(
     {
       name: packageInfo.name,
@@ -54,23 +60,18 @@ async function main() {
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
 
-    // Log para debug (vai para stderr, não interfere no protocolo)
+    // Log para debug
     console.error(`[MCP] Executando tool: ${name}`);
     console.error(`[MCP] Args: ${JSON.stringify(args)}`);
 
     try {
       let result;
 
-      // Verificar se é uma tool de documentação
       if (isDocsTool(name)) {
         result = await handleDocsTool(name, args || {});
-      }
-      // Verificar se é uma tool de API
-      else if (isApiTool(name)) {
+      } else if (isApiTool(name)) {
         result = await handleApiTool(name, args || {});
-      }
-      // Tool não encontrada
-      else {
+      } else {
         result = {
           content: [
             {
@@ -82,17 +83,14 @@ async function main() {
         };
       }
 
-      // Log do resultado
       console.error(`[MCP] Resultado (isError: ${result.isError || false}): ${result.content[0]?.text?.substring(0, 200)}...`);
-      
+
       return result;
     } catch (error) {
-      // Log do erro para debug
       console.error(`[MCP] ERRO CAPTURADO:`, error);
 
       let errorText: string;
 
-      // Verifica se é um erro específico da API Meta
       if (error instanceof MetaClientError) {
         errorText = `# Erro da API Meta
 
@@ -111,7 +109,7 @@ Consulte a documentação de erros com \`get_error_code_info\` para mais detalhe
       } else {
         errorText = `# Erro desconhecido\n\n\`\`\`json\n${JSON.stringify(error, null, 2)}\n\`\`\``;
       }
-      
+
       return {
         content: [
           {
@@ -124,12 +122,48 @@ Consulte a documentação de erros com \`get_error_code_info\` para mais detalhe
     }
   });
 
-  // Conectar via stdio
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  return server;
+}
 
-  // Log para debug (vai para stderr, não interfere no protocolo)
-  console.error(`${packageInfo.name} v${packageInfo.version} iniciado`);
+/**
+ * Parse CLI args para determinar modo de transporte.
+ */
+function parseArgs(): { mode: 'stdio' | 'http'; port: number } {
+  const args = process.argv.slice(2);
+  const isHttp = args.includes('--http');
+
+  let port = 3000;
+  const portEqArg = args.find(a => a.startsWith('--port='));
+  if (portEqArg) {
+    port = parseInt(portEqArg.split('=')[1], 10);
+  } else {
+    const portIdx = args.indexOf('--port');
+    if (portIdx !== -1 && args[portIdx + 1]) {
+      port = parseInt(args[portIdx + 1], 10);
+    }
+  }
+
+  return { mode: isHttp ? 'http' : 'stdio', port };
+}
+
+async function main() {
+  const { mode, port } = parseArgs();
+
+  if (mode === 'http') {
+    // Dynamic import para não carregar Express no modo stdio
+    const { startHttpServer } = await import('./transports/http-server.js');
+    await startHttpServer({
+      port,
+      createServer: createMcpServer,
+    });
+  } else {
+    // Modo stdio (compatibilidade com uso local)
+    const { StdioServerTransport } = await import('@modelcontextprotocol/sdk/server/stdio.js');
+    const server = createMcpServer();
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+    console.error(`${packageInfo.name} v${packageInfo.version} iniciado (stdio)`);
+  }
 }
 
 main().catch((error) => {

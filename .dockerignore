@@ -1,0 +1,11 @@
+node_modules
+src
+scripts
+.git
+.gitignore
+.env
+*.md
+tsconfig.json
+.DS_Store
+.cursor
+.claude

@@ -15,6 +15,7 @@
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
+    "start:http": "node dist/index.js --http --port 3000",
     "dev": "tsc --watch",
     "scrape": "node scripts/scrape-docs.js",
     "scrape:resume": "node scripts/scrape-docs.js --resume",
@@ -33,10 +34,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.0.4",
+    "@modelcontextprotocol/sdk": "^1.26.0",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.2.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
     "puppeteer": "^24.0.0",
     "turndown": "^7.2.0",
