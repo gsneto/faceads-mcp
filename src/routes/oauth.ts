@@ -464,7 +464,6 @@ router.get('/settings', async (req: Request, res: Response) => {
       redirect_uri: redirect_uri as string,
       state: (state as string) || '',
       maskedToken: existingToken ? maskToken(existingToken.accessToken) : null,
-      maskedAdAccount: existingToken ? maskAdAccount(existingToken.adAccountId) : null,
     });
 
     res.type('html').send(html);
@@ -478,7 +477,7 @@ router.get('/settings', async (req: Request, res: Response) => {
 // ── POST /oauth/settings — Save Meta token and redirect ──
 
 router.post('/settings', async (req: Request, res: Response) => {
-  const { meta_access_token, meta_ad_account_id, code, redirect_uri, state } = req.body;
+  const { meta_access_token, code, redirect_uri, state } = req.body;
 
   if (!code || !redirect_uri) {
     res.status(400).json({ error: 'invalid_request', error_description: 'code and redirect_uri are required' });
@@ -495,21 +494,15 @@ router.post('/settings', async (req: Request, res: Response) => {
       return;
     }
 
-    // If both fields are provided, upsert Meta token
-    if (meta_access_token && meta_ad_account_id) {
+    // If token is provided, upsert Meta token
+    if (meta_access_token) {
       // Delete existing tokens for this user
       await prisma.metaToken.deleteMany({ where: { userId: authCode.userId } });
-
-      // Create new token
-      const normalizedAdAccount = meta_ad_account_id.startsWith('act_')
-        ? meta_ad_account_id
-        : `act_${meta_ad_account_id}`;
 
       await prisma.metaToken.create({
         data: {
           userId: authCode.userId,
           accessToken: encryptToken(meta_access_token),
-          adAccountId: normalizedAdAccount,
         },
       });
     }
@@ -535,11 +528,6 @@ function maskToken(encrypted: string): string {
   return 'EAA...xxxx';
 }
 
-function maskAdAccount(adAccountId: string): string {
-  if (adAccountId.length <= 7) return adAccountId;
-  return adAccountId.slice(0, 4) + '***' + adAccountId.slice(-3);
-}
-
 // ── Settings Page HTML ──
 
 interface SettingsPageParams {
@@ -547,12 +535,11 @@ interface SettingsPageParams {
   redirect_uri: string;
   state: string;
   maskedToken: string | null;
-  maskedAdAccount: string | null;
   error?: string;
 }
 
 function renderSettingsPage(params: SettingsPageParams): string {
-  const { code, redirect_uri, state, maskedToken, maskedAdAccount, error } = params;
+  const { code, redirect_uri, state, maskedToken, error } = params;
 
   const escapeHtml = (str: string) => str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
@@ -596,7 +583,7 @@ function renderSettingsPage(params: SettingsPageParams): string {
     <h1>Configure Meta Token</h1>
     <p class="subtitle">Set up your Meta API access to use marketing tools</p>
     ${error ? `<div class="error">${escapeHtml(error)}</div>` : ''}
-    ${hasExisting ? `<div class="current-token"><strong>Current token configured</strong>Token: ${escapeHtml(maskedToken!)}<br>Ad Account: ${escapeHtml(maskedAdAccount!)}</div>` : ''}
+    ${hasExisting ? `<div class="current-token"><strong>Current token configured</strong>Token: ${escapeHtml(maskedToken!)}</div>` : ''}
     <form method="POST" action="/oauth/settings">
       <input type="hidden" name="code" value="${escapeHtml(code)}">
       <input type="hidden" name="redirect_uri" value="${escapeHtml(redirect_uri)}">
@@ -604,9 +591,6 @@ function renderSettingsPage(params: SettingsPageParams): string {
       <label for="meta_access_token">Meta Access Token</label>
       <textarea id="meta_access_token" name="meta_access_token" placeholder="EAA..." rows="3"></textarea>
       ${hasExisting ? '<p class="helper">Leave blank to keep current token</p>' : '<p class="helper">Get your token from Meta Business Suite</p>'}
-      <label for="meta_ad_account_id">Ad Account ID</label>
-      <input type="text" id="meta_ad_account_id" name="meta_ad_account_id" placeholder="act_123456789">
-      ${hasExisting ? '<p class="helper">Leave blank to keep current account</p>' : '<p class="helper">Found in Meta Business Settings → Ad Accounts</p>'}
       <div class="actions">
         <button type="submit">Save &amp; Continue</button>
         ${hasExisting ? `<div class="skip-link"><a href="${escapeHtml(skipUrl.toString())}">Continue without changes &rarr;</a></div>` : ''}

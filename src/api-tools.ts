@@ -1,7 +1,7 @@
 /**
  * Tools de Execução - API da Meta
  *
- * Estas tools requerem configuração de API keys (META_ACCESS_TOKEN, META_AD_ACCOUNT_ID).
+ * Estas tools requerem configuração de META_ACCESS_TOKEN.
  * Permitem criar, atualizar e gerenciar campanhas na plataforma Meta Ads.
  */
 
@@ -156,6 +156,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: {
           type: 'array',
           items: { type: 'string' },
@@ -170,6 +171,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
           description: 'Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só campanhas ativas',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -224,6 +226,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome da campanha' },
         objective: {
           type: 'string',
@@ -254,7 +257,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
         is_skadnetwork_attribution: { type: 'boolean', description: 'Habilitar atribuição SKAdNetwork para iOS 14+' },
         promoted_object: { type: 'object', description: 'Objeto promovido no nível da campanha (iOS 14+ SKAdNetwork)' },
       },
-      required: ['name', 'objective'],
+      required: ['account_id', 'name', 'objective'],
     },
   },
   {
@@ -322,6 +325,7 @@ DICA: Use effective_status para economizar tokens.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
         effective_status: {
           type: 'array',
@@ -332,6 +336,7 @@ DICA: Use effective_status para economizar tokens.`,
           description: 'Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só ad sets ativos',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -412,6 +417,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome do ad set' },
         campaign_id: { type: 'string', description: 'ID da campanha pai' },
         daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil). Mutuamente exclusivo com lifetime_budget.' },
@@ -554,7 +560,7 @@ Exemplo correto: key 460 = São Paulo, BR
         dsa_payor: { type: 'string', description: 'Pagador DSA (EU compliance)' },
         adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels para associar' },
       },
-      required: ['name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
+      required: ['account_id', 'name', 'campaign_id', 'billing_event', 'optimization_goal', 'targeting'],
     },
   },
   {
@@ -651,12 +657,14 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: {
           type: 'array',
           items: { type: 'string' },
           description: 'Campos a retornar (default: id, name, status, adset_id, effective_status)',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -702,6 +710,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome do anúncio' },
         adset_id: { type: 'string', description: 'ID do ad set pai' },
         creative_id: { type: 'string', description: 'ID do criativo a usar' },
@@ -716,7 +725,7 @@ Exemplo correto: key 460 = São Paulo, BR
         conversion_domain: { type: 'string', description: 'Domínio de conversão. Ex: "example.com"' },
         adlabels: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' } } }, description: 'Labels' },
       },
-      required: ['name', 'adset_id', 'creative_id'],
+      required: ['account_id', 'name', 'adset_id', 'creative_id'],
     },
   },
   {
@@ -772,12 +781,14 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: {
           type: 'array',
           items: { type: 'string' },
           description: 'Campos a retornar (default: id, name, object_story_spec, thumbnail_url)',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -850,6 +861,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome do criativo' },
         object_story_spec: {
           type: 'object',
@@ -929,7 +941,7 @@ Exemplo correto: key 460 = São Paulo, BR
           },
         },
       },
-      required: ['name'],
+      required: ['account_id', 'name'],
     },
   },
 
@@ -953,6 +965,7 @@ INTERPRETAÇÃO:
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         date_preset: {
           type: 'string',
           enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
@@ -984,6 +997,7 @@ INTERPRETAÇÃO:
           description: 'Se false, permite especificar janelas manualmente (default: true)',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -1191,6 +1205,7 @@ action_types: ["purchase", "lead"]  // opcional, default: ["purchase"]`,
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         date_preset: {
           type: 'string',
           enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
@@ -1210,6 +1225,7 @@ action_types: ["purchase", "lead"]  // opcional, default: ["purchase"]`,
           description: 'Tipos de conversão para analisar (default: ["purchase"]). Ex: ["purchase", "lead"]',
         },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -1229,6 +1245,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         campaign_id: { type: 'string', description: 'ID da campanha' },
         date_preset: {
           type: 'string',
@@ -1257,7 +1274,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
           description: 'Janelas de atribuição para quebrar métricas de conversão',
         },
       },
-      required: ['campaign_id'],
+      required: ['account_id', 'campaign_id'],
     },
   },
 
@@ -1268,8 +1285,10 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar. Evite approximate_count (depreciado)' },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -1301,6 +1320,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome da audiência' },
         subtype: {
           type: 'string',
@@ -1320,7 +1340,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
         pixel_id: { type: 'string', description: 'ID do pixel (para WEBSITE)' },
         prefill: { type: 'boolean', description: 'Preencher com dados históricos' },
       },
-      required: ['name', 'subtype'],
+      required: ['account_id', 'name', 'subtype'],
     },
   },
   {
@@ -1329,9 +1349,10 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         targeting_spec: { type: 'object', description: 'Especificação de targeting' },
       },
-      required: ['targeting_spec'],
+      required: ['account_id', 'targeting_spec'],
     },
   },
 
@@ -1363,12 +1384,14 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: {
           type: 'array',
           items: { type: 'string' },
           description: 'Campos a retornar (default: id, name, last_fired_time, is_created_by_business)',
         },
       },
+      required: ['account_id'],
     },
   },
 
@@ -1402,9 +1425,10 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         image_url: { type: 'string', description: 'URL da imagem para upload' },
       },
-      required: ['image_url'],
+      required: ['account_id', 'image_url'],
     },
   },
 
@@ -1502,10 +1526,11 @@ CASOS DE USO:
 - Criar campanha com campos novos: POST {ad_account_id}/campaigns (incluir is_adset_budget_sharing_enabled)
 - Criar ad set com bid_strategy: POST {ad_account_id}/adsets (incluir bid_strategy: LOWEST_COST_WITHOUT_CAP)
 
-PLACEHOLDER DE CONTA:
-- Use {ad_account_id} no endpoint para usar a conta configurada em META_AD_ACCOUNT_ID
-- Se passar um act_XXXX diferente do configurado, será substituído automaticamente
-- NUNCA invente IDs! Use me/adaccounts para descobrir o ID real
+MULTI-CONTA:
+- Cada tool que opera em nível de conta requer account_id explícito
+- Use discover_ad_accounts para listar as contas disponíveis
+- Passe account_id: "act_XXXXX" em cada chamada
+- NUNCA invente IDs! Use discover_ad_accounts para obter IDs reais
 
 LIMITAÇÕES DO /copies (deep_copy=true):
 - Máx 3 objetos em chamada síncrona (erro 1885194 se exceder)
@@ -1516,6 +1541,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios para substituir {ad_account_id} no endpoint (opcional).' },
         method: {
           type: 'string',
           enum: ['GET', 'POST', 'DELETE'],
@@ -1553,11 +1579,12 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         file_url: { type: 'string', description: 'URL do vídeo para upload' },
         title: { type: 'string', description: 'Título do vídeo' },
         description: { type: 'string', description: 'Descrição do vídeo' },
       },
-      required: ['file_url'],
+      required: ['account_id', 'file_url'],
     },
   },
   {
@@ -1579,10 +1606,11 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome do value rule set' },
         rules: { type: 'array', items: { type: 'object' }, description: 'Array de regras de valor. Cada regra: {name, adjust_sign: "INCREASE"|"DECREASE", adjust_value: 1-1000, criterias: [{criteria_type: "AGE"|"GENDER"|"LOCATION"|"OS_TYPE"|"DEVICE_PLATFORM"|"PLACEMENT", operator: "CONTAINS", criteria_values: [...], criteria_value_types: [...]}]}' },
       },
-      required: ['name', 'rules'],
+      required: ['account_id', 'name', 'rules'],
     },
   },
   {
@@ -1591,8 +1619,10 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
       },
+      required: ['account_id'],
     },
   },
   {
@@ -1639,9 +1669,10 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         name: { type: 'string', description: 'Nome do label' },
       },
-      required: ['name'],
+      required: ['account_id', 'name'],
     },
   },
   {
@@ -1650,8 +1681,10 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
+        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
       },
+      required: ['account_id'],
     },
   },
 
@@ -1799,6 +1832,13 @@ Use esta tool quando o contexto envolver estratégia de campanhas no era Androme
     },
   },
 ];
+
+/**
+ * Normaliza account_id para formato act_XXXXX
+ */
+function normalizeAccountId(accountId: string): string {
+  return accountId.startsWith('act_') ? accountId : `act_${accountId}`;
+}
 
 /**
  * Verifica se a API está configurada antes de executar
@@ -2274,7 +2314,7 @@ ${acc.timezone_name ? `- **Timezone:** ${acc.timezone_name}` : ''}`;
     content: [
       {
         type: 'text',
-        text: `# Contas de Anúncios\n\nEncontradas ${result.data.length} conta(s):\n\n${accountsText}`,
+        text: `# Contas de Anúncios Disponíveis\n\nEncontradas ${result.data.length} conta(s):\n\n${accountsText}\n\n---\n\n**Passe o \`account_id\` desejado em cada chamada de tool.** Ex: \`account_id: "act_123456789"\``,
       },
     ],
   };
@@ -2361,8 +2401,9 @@ async function handleListCampaigns(
   client: MetaClient,
   args: ListCampaignsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listCampaigns(args.fields, args.effective_status);
-  
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listCampaigns(accountId, args.fields, args.effective_status);
+
   const filterNote = args.effective_status 
     ? `\n**Filtro:** ${args.effective_status.join(', ')}\n` 
     : '';
@@ -2434,6 +2475,8 @@ async function handleCreateCampaign(
     };
   }
 
+  const accountId = normalizeAccountId(args.account_id);
+
   // Sempre incluir is_adset_budget_sharing_enabled para evitar erro 4834011
   const is_adset_budget_sharing_enabled = args.is_adset_budget_sharing_enabled ?? false;
 
@@ -2441,7 +2484,7 @@ async function handleCreateCampaign(
   const hasBudget = args.daily_budget || args.lifetime_budget;
   const bid_strategy = args.bid_strategy ?? (hasBudget ? 'LOWEST_COST_WITHOUT_CAP' : undefined);
 
-  const result = await client.createCampaign({
+  const result = await client.createCampaign(accountId, {
     name: args.name,
     objective: args.objective,
     status: args.status,
@@ -2540,8 +2583,9 @@ async function handleListAdsets(
   client: MetaClient,
   args: ListAdsetsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listAdSets(args.fields, args.effective_status);
-  
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listAdSets(accountId, args.fields, args.effective_status);
+
   const filterNote = args.effective_status 
     ? `\n**Filtro:** ${args.effective_status.join(', ')}\n` 
     : '';
@@ -2641,7 +2685,8 @@ async function handleCreateAdset(
     };
   }
 
-  const result = await client.createAdSet({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createAdSet(accountId, {
     name: args.name,
     campaign_id: args.campaign_id,
     billing_event: args.billing_event,
@@ -2781,7 +2826,8 @@ async function handleListAds(
   client: MetaClient,
   args: ListAdsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listAds(args.fields);
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listAds(accountId, args.fields);
   return {
     content: [
       {
@@ -2826,7 +2872,8 @@ async function handleCreateAd(
   client: MetaClient,
   args: CreateAdArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.createAd({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createAd(accountId, {
     name: args.name,
     adset_id: args.adset_id,
     creative: { creative_id: args.creative_id },
@@ -2914,7 +2961,8 @@ async function handleListCreatives(
   client: MetaClient,
   args: ListCreativesArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listCreatives(args.fields);
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listCreatives(accountId, args.fields);
   return {
     content: [
       {
@@ -2988,7 +3036,8 @@ async function handleCreateCreative(
     }
   }
 
-  const result = await client.createCreative({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createCreative(accountId, {
     name: args.name,
     object_story_spec: args.object_story_spec,
     object_story_id: args.object_story_id,
@@ -3038,7 +3087,8 @@ async function handleGetAccountInsights(
   client: MetaClient,
   args: GetAccountInsightsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.getAccountInsights({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.getAccountInsights(accountId, {
     date_preset: args.date_preset,
     time_range: args.time_range,
     fields: args.fields,
@@ -3257,10 +3307,11 @@ async function handleGetPerformanceSummary(
   client: MetaClient,
   args: GetPerformanceSummaryArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
+  const accountId = normalizeAccountId(args.account_id);
   const actionTypes = args.action_types || ['purchase'];
-  
+
   // Buscar insights da conta com atribuição expandida
-  const result = await client.getAccountInsights({
+  const result = await client.getAccountInsights(accountId, {
     date_preset: args.date_preset || 'last_30d',
     time_range: args.time_range,
     fields: ['spend', 'actions', 'cost_per_action_type', 'action_values'],
@@ -3501,7 +3552,8 @@ async function handleListCustomAudiences(
   client: MetaClient,
   args: ListCustomAudiencesArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listCustomAudiences(args.fields);
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listCustomAudiences(accountId, args.fields);
   return {
     content: [
       {
@@ -3539,7 +3591,8 @@ async function handleCreateCustomAudience(
     };
   }
 
-  const result = await client.createCustomAudience({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createCustomAudience(accountId, {
     name: args.name,
     subtype: args.subtype,
     description: args.description,
@@ -3562,7 +3615,8 @@ async function handleGetReachEstimate(
   client: MetaClient,
   args: GetReachEstimateArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.getReachEstimate({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.getReachEstimate(accountId, {
     targeting_spec: args.targeting_spec,
   });
   return {
@@ -3581,8 +3635,9 @@ async function handleListPixels(
   client: MetaClient,
   args: ListPixelsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listPixels(args.fields);
-  
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listPixels(accountId, args.fields);
+
   if (result.data.length === 0) {
     return {
       content: [
@@ -3634,7 +3689,8 @@ async function handleUploadImage(
   args: UploadImageArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   try {
-    const result = await client.uploadImageFromUrl(args.image_url);
+    const accountId = normalizeAccountId(args.account_id);
+    const result = await client.uploadImageFromUrl(accountId, args.image_url);
     
     // A resposta do Meta vem como { images: { bytes: { hash, url, ... } } }
     const images = (result as Record<string, unknown>).images as Record<string, Record<string, string>> | undefined;
@@ -3842,37 +3898,15 @@ Para cidades:
 // ==================== API CUSTOMIZADA HANDLER ====================
 
 /**
- * Processa o endpoint substituindo placeholders e validando IDs de conta
+ * Processa o endpoint substituindo placeholders de conta
  */
-function processEndpoint(endpoint: string): { processedEndpoint: string; warnings: string[] } {
-  const config = getMetaConfig();
+function processEndpoint(endpoint: string, accountId?: string): { processedEndpoint: string; warnings: string[] } {
   const warnings: string[] = [];
   let processedEndpoint = endpoint;
 
-  if (!config) {
-    return { processedEndpoint, warnings };
-  }
-
-  const configuredAccountId = config.adAccountId;
-
-  // 1. Substituir placeholder {ad_account_id} pelo ID configurado
-  if (processedEndpoint.includes('{ad_account_id}')) {
-    processedEndpoint = processedEndpoint.replace('{ad_account_id}', configuredAccountId);
-  }
-
-  // 2. Detectar e corrigir se alguém passou um ID de conta diferente do configurado
-  // Padrão: act_NUMEROS no início do endpoint (ex: act_123456789/adimages)
-  const accountIdPattern = /^act_\d+/;
-  const match = processedEndpoint.match(accountIdPattern);
-
-  if (match) {
-    const providedAccountId = match[0];
-    if (providedAccountId !== configuredAccountId) {
-      warnings.push(
-        `⚠️ ID de conta substituído: "${providedAccountId}" → "${configuredAccountId}" (usando META_AD_ACCOUNT_ID configurado)`
-      );
-      processedEndpoint = processedEndpoint.replace(accountIdPattern, configuredAccountId);
-    }
+  // Substituir placeholder {ad_account_id} se account_id fornecido
+  if (accountId && processedEndpoint.includes('{ad_account_id}')) {
+    processedEndpoint = processedEndpoint.replace('{ad_account_id}', accountId);
   }
 
   return { processedEndpoint, warnings };
@@ -3883,9 +3917,10 @@ async function handleExecuteApi(
   args: ExecuteApiArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
   const { method, endpoint, params } = args;
+  const accountId = args.account_id ? normalizeAccountId(args.account_id) : undefined;
 
-  // Processar endpoint (substituir placeholders e validar IDs)
-  const { processedEndpoint, warnings } = processEndpoint(endpoint);
+  // Processar endpoint (substituir placeholders)
+  const { processedEndpoint, warnings } = processEndpoint(endpoint, accountId);
 
   let result: unknown;
 
@@ -3932,7 +3967,8 @@ async function handleUploadVideo(
   client: MetaClient,
   args: UploadVideoArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.uploadVideo({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.uploadVideo(accountId, {
     file_url: args.file_url,
     title: args.title,
     description: args.description,
@@ -4001,7 +4037,8 @@ async function handleCreateValueRuleSet(
   client: MetaClient,
   args: CreateValueRuleSetArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.createValueRuleSet({
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createValueRuleSet(accountId, {
     name: args.name,
     rules: args.rules,
   });
@@ -4020,7 +4057,8 @@ async function handleListValueRuleSets(
   client: MetaClient,
   args: ListValueRuleSetsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listValueRuleSets(args.fields);
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listValueRuleSets(accountId, args.fields);
   const data = result.data || [];
 
   return {
@@ -4091,7 +4129,8 @@ async function handleCreateAdLabel(
   client: MetaClient,
   args: CreateAdLabelArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.createAdLabel({ name: args.name });
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.createAdLabel(accountId, { name: args.name });
 
   return {
     content: [
@@ -4107,7 +4146,8 @@ async function handleListAdLabels(
   client: MetaClient,
   args: ListAdLabelsArgs
 ): Promise<{ content: Array<{ type: 'text'; text: string }> }> {
-  const result = await client.listAdLabels(args.fields);
+  const accountId = normalizeAccountId(args.account_id);
+  const result = await client.listAdLabels(accountId, args.fields);
   const data = result.data || [];
 
   return {

@@ -11,6 +11,11 @@ const jsonObject = <T extends z.ZodTypeAny>(schema: T) =>
 // Utility: coerce string-encoded numbers (MCP protocol serializes numbers as strings)
 const coerceNum = () => z.coerce.number();
 
+// Campo reutilizável: account_id obrigatório para tools de conta
+const accountIdField = z.string()
+  .min(1)
+  .describe('ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.');
+
 // ==================== SCHEMAS DE DESCOBERTA ====================
 
 export const discoverAdAccountsSchema = z.object({
@@ -43,6 +48,7 @@ const effectiveStatusSchema = z.array(
 ).describe('Filtrar por status efetivo. Ex: ["ACTIVE"] retorna só campanhas ativas');
 
 export const listCampaignsSchema = z.object({
+  account_id: accountIdField,
   fields: z
     .array(z.string())
     .optional()
@@ -56,6 +62,7 @@ export const getCampaignSchema = z.object({
 });
 
 export const createCampaignSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome da campanha'),
   objective: z
     .enum([
@@ -126,6 +133,7 @@ export const activateCampaignSchema = z.object({
 // ==================== SCHEMAS DE AD SETS ====================
 
 export const listAdsetsSchema = z.object({
+  account_id: accountIdField,
   fields: z.array(z.string()).optional().describe('Campos a retornar'),
   effective_status: effectiveStatusSchema.optional(),
 });
@@ -202,6 +210,7 @@ const attributionSpecItemSchema = z.object({
 });
 
 export const createAdsetSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome do ad set'),
   campaign_id: z.string().min(1).describe('ID da campanha pai'),
   daily_budget: z.coerce.number()
@@ -367,6 +376,7 @@ export const activateAdsetSchema = z.object({
 // ==================== SCHEMAS DE ADS ====================
 
 export const listAdsSchema = z.object({
+  account_id: accountIdField,
   fields: z
     .array(z.string())
     .optional()
@@ -390,6 +400,7 @@ export const getAdSchema = z.object({
 });
 
 export const createAdSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome do anúncio'),
   adset_id: z.string().min(1).describe('ID do ad set pai'),
   creative_id: z.string().min(1).describe('ID do criativo a usar'),
@@ -437,6 +448,7 @@ export const activateAdSchema = z.object({
 // ==================== SCHEMAS DE CRIATIVOS ====================
 
 export const listCreativesSchema = z.object({
+  account_id: accountIdField,
   fields: z
     .array(z.string())
     .optional()
@@ -524,6 +536,7 @@ const assetFeedSpecSchema = z.object({
 }).passthrough();
 
 export const createCreativeSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome do criativo'),
   object_story_spec: objectStorySpecSchema.optional().describe('Especificação do criativo. Use para Link Ads, Video Ads, Carousel Ads.'),
   object_story_id: z.string().optional().describe('ID de post existente para promover (formato: PAGE_ID_POST_ID). Alternativa a object_story_spec.'),
@@ -587,6 +600,7 @@ Cada action retorna com breakdown por janela:
 - incrementality: conversoes incrementais (modelo causal da Meta)`);
 
 export const getAccountInsightsSchema = z.object({
+  account_id: accountIdField,
   date_preset: datePresetSchema.optional().describe('Período predefinido'),
   time_range: timeRangeSchema.optional().describe('Intervalo de datas personalizado'),
   fields: z
@@ -648,6 +662,7 @@ export const getAttributionComparisonSchema = z.object({
 });
 
 export const getPerformanceSummarySchema = z.object({
+  account_id: accountIdField,
   date_preset: datePresetSchema.optional().default('last_30d').describe('Período (default: last_30d)'),
   time_range: timeRangeSchema.optional(),
   action_types: z
@@ -658,6 +673,7 @@ export const getPerformanceSummarySchema = z.object({
 });
 
 export const listCampaignAdsWithInsightsSchema = z.object({
+  account_id: accountIdField,
   campaign_id: z.string().min(1).describe('ID da campanha'),
   date_preset: datePresetSchema.optional().default('last_30d').describe('Período (default: last_30d)'),
   time_range: timeRangeSchema.optional(),
@@ -674,10 +690,12 @@ export const listCampaignAdsWithInsightsSchema = z.object({
 // ==================== SCHEMAS DE AUDIÊNCIAS ====================
 
 export const listCustomAudiencesSchema = z.object({
+  account_id: accountIdField,
   fields: z.array(z.string()).optional().describe('Campos a retornar'),
 });
 
 export const createCustomAudienceSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome da audiência'),
   subtype: z
     .enum(['CUSTOM', 'WEBSITE', 'APP', 'OFFLINE_CONVERSION', 'LOOKALIKE', 'ENGAGEMENT'])
@@ -702,12 +720,14 @@ export const createCustomAudienceSchema = z.object({
 });
 
 export const getReachEstimateSchema = z.object({
+  account_id: accountIdField,
   targeting_spec: z.record(z.string(), z.unknown()).describe('Especificação de targeting'),
 });
 
 // ==================== PIXELS ====================
 
 export const listPixelsSchema = z.object({
+  account_id: accountIdField,
   fields: z
     .array(z.string())
     .optional()
@@ -736,6 +756,7 @@ export const searchGeolocationSchema = z.object({
 // ==================== API CUSTOMIZADA ====================
 
 export const executeApiSchema = z.object({
+  account_id: accountIdField.optional(),
   method: z.enum(['GET', 'POST', 'DELETE']).describe('Método HTTP'),
   endpoint: z.string().min(1).describe('Endpoint da API (ex: "123456789/copies")'),
   params: z.record(z.string(), z.unknown()).optional().describe('Parâmetros da requisição'),
@@ -744,6 +765,7 @@ export const executeApiSchema = z.object({
 // ==================== SCHEMAS DE VÍDEO (Phase 2) ====================
 
 export const uploadVideoSchema = z.object({
+  account_id: accountIdField,
   file_url: z.string().url().describe('URL do vídeo para upload. O vídeo será baixado e enviado para a conta de anúncios.'),
   title: z.string().optional().describe('Título do vídeo'),
   description: z.string().optional().describe('Descrição do vídeo'),
@@ -756,11 +778,13 @@ export const getVideoStatusSchema = z.object({
 // ==================== SCHEMAS DE VALUE RULES (Phase 3) ====================
 
 export const createValueRuleSetSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome do value rule set'),
   rules: z.array(z.record(z.string(), z.unknown())).describe('Array de regras de valor. Cada regra: {name, adjust_sign: "INCREASE"|"DECREASE", adjust_value: 1-1000, criterias: [{criteria_type: "AGE"|"GENDER"|"LOCATION"|"OS_TYPE"|"DEVICE_PLATFORM"|"PLACEMENT", operator: "CONTAINS", criteria_values: [...], criteria_value_types: [...]}]}'),
 });
 
 export const listValueRuleSetsSchema = z.object({
+  account_id: accountIdField,
   fields: z.array(z.string()).optional().describe('Campos a retornar'),
 });
 
@@ -782,10 +806,12 @@ export const deleteValueRuleSetSchema = z.object({
 // ==================== SCHEMAS DE AD LABELS (Phase 4) ====================
 
 export const createAdLabelSchema = z.object({
+  account_id: accountIdField,
   name: z.string().min(1).describe('Nome do label'),
 });
 
 export const listAdLabelsSchema = z.object({
+  account_id: accountIdField,
   fields: z.array(z.string()).optional().describe('Campos a retornar'),
 });
 
@@ -906,6 +932,7 @@ export type DeleteBudgetScheduleArgs = z.infer<typeof deleteBudgetScheduleSchema
 
 // Upload de Imagem
 export const uploadImageSchema = z.object({
+  account_id: accountIdField,
   image_url: z.string().url().describe('URL da imagem para upload. A imagem será baixada e enviada para a conta de anúncios.'),
 });
 export type UploadImageArgs = z.infer<typeof uploadImageSchema>;

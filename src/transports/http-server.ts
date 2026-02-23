@@ -159,14 +159,12 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       const oauthUserId = oauthToken.userId;
       const permissions = scopeToPermission(oauthToken.scope);
 
-      // Check for X-Meta-* header overrides (debug)
+      // Check for X-Meta-* header override (debug)
       const headerAccessToken = req.headers['x-meta-access-token'] as string | undefined;
-      const headerAdAccountId = req.headers['x-meta-ad-account-id'] as string | undefined;
 
-      if (headerAccessToken && headerAdAccountId) {
+      if (headerAccessToken) {
         return {
           accessToken: headerAccessToken,
-          adAccountId: headerAdAccountId.startsWith('act_') ? headerAdAccountId : `act_${headerAdAccountId}`,
           apiVersion: (req.headers['x-meta-api-version'] as string) || undefined,
           userId: oauthUserId,
           permissions,
@@ -181,7 +179,6 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
       return {
         accessToken: metaToken ? decryptToken(metaToken.accessToken) : '',
-        adAccountId: metaToken?.adAccountId ?? '',
         userId: oauthUserId,
         permissions,
       };

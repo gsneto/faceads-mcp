@@ -347,7 +347,7 @@ O Pixel do Facebook é um código JavaScript que rastreia ações dos visitantes
 ${
   apiConfigured
     ? '✅ **API configurada** - Você pode executar operações na plataforma Meta Ads.'
-    : '⚠️ **API não configurada** - Configure META_ACCESS_TOKEN e META_AD_ACCOUNT_ID para executar operações.'
+    : '⚠️ **API não configurada** - Configure META_ACCESS_TOKEN para executar operações. Use discover_ad_accounts para listar contas disponíveis.'
 }
 
 ## Capacidades

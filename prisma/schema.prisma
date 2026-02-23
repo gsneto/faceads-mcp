@@ -27,7 +27,7 @@ model MetaToken {
   userId      String    @map("user_id")
   accessToken String    @map("access_token")
   tokenType   String    @default("user") @map("token_type")
-  adAccountId String    @map("ad_account_id")
+  adAccountId String?   @map("ad_account_id")
   expiresAt   DateTime? @map("expires_at")
   scopes      String?
   metaUserId  String?   @map("meta_user_id")

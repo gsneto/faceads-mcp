@@ -10,7 +10,6 @@ import { getAuthContext } from './auth-context.js';
 
 export interface MetaConfig {
   accessToken: string;
-  adAccountId: string;
   apiVersion: string;
 }
 
@@ -19,7 +18,7 @@ export interface MetaConfig {
  */
 function loadDotEnv(): void {
   // Só carrega se as variáveis não existirem
-  if (process.env.META_ACCESS_TOKEN && process.env.META_AD_ACCOUNT_ID) {
+  if (process.env.META_ACCESS_TOKEN) {
     return;
   }
 
@@ -59,22 +58,19 @@ loadDotEnv();
  *
  * Variáveis obrigatórias:
  * - META_ACCESS_TOKEN: Token de acesso da API
- * - META_AD_ACCOUNT_ID: ID da conta de anúncios (ex: act_123456 ou 123456)
  *
  * Variáveis opcionais:
  * - META_API_VERSION: Versão da API (default: v24.0)
  */
 export function getMetaConfig(): MetaConfig | null {
   const accessToken = process.env.META_ACCESS_TOKEN;
-  const adAccountId = process.env.META_AD_ACCOUNT_ID;
 
-  if (!accessToken || !adAccountId) {
+  if (!accessToken) {
     return null;
   }
 
   return {
     accessToken,
-    adAccountId: adAccountId.startsWith('act_') ? adAccountId : `act_${adAccountId}`,
     apiVersion: process.env.META_API_VERSION || 'v24.0',
   };
 }
@@ -85,7 +81,7 @@ export function getMetaConfig(): MetaConfig | null {
 export function isMetaConfigured(): boolean {
   // Check auth context first (HTTP multi-tenant with DB tokens)
   const authCtx = getAuthContext();
-  if (authCtx && authCtx.accessToken && authCtx.adAccountId) {
+  if (authCtx && authCtx.accessToken) {
     return true;
   }
   // Fallback to env vars (stdio mode)
@@ -97,9 +93,8 @@ export function isMetaConfigured(): boolean {
  */
 export function getConfigurationError(): string {
   return `A API da Meta não está configurada. Configure as seguintes variáveis de ambiente:
-  
+
 - META_ACCESS_TOKEN: Token de acesso da API (obrigatório)
-- META_AD_ACCOUNT_ID: ID da conta de anúncios, ex: act_123456 (obrigatório)
 - META_API_VERSION: Versão da API (opcional, default: v24.0)
 
 Exemplo de configuração no MCP:
@@ -109,10 +104,11 @@ Exemplo de configuração no MCP:
       "command": "npx",
       "args": ["-y", "fb-marketing-mcp"],
       "env": {
-        "META_ACCESS_TOKEN": "seu_token_aqui",
-        "META_AD_ACCOUNT_ID": "act_123456789"
+        "META_ACCESS_TOKEN": "seu_token_aqui"
       }
     }
   }
-}`;
+}
+
+Use a tool "discover_ad_accounts" para listar as contas de anúncio disponíveis e passe o account_id em cada chamada.`;
 }

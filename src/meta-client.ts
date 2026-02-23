@@ -117,7 +117,6 @@ export class MetaClient {
     if (authCtx) {
       this.config = {
         accessToken: authCtx.accessToken,
-        adAccountId: authCtx.adAccountId,
         apiVersion: authCtx.apiVersion || 'v24.0',
       };
       return;
@@ -323,13 +322,14 @@ export class MetaClient {
    * Lista campanhas da conta
    */
   async listCampaigns(
+    accountId: string,
     fields: string[] = ['id', 'name', 'status', 'objective', 'created_time'],
     effectiveStatus?: string[]
   ): Promise<{ data: Campaign[] }> {
     const params: Record<string, string> = {
       fields: fields.join(','),
     };
-    
+
     // Adiciona filtro por effective_status se especificado
     if (effectiveStatus && effectiveStatus.length > 0) {
       params.filtering = JSON.stringify([{
@@ -338,8 +338,8 @@ export class MetaClient {
         value: effectiveStatus,
       }]);
     }
-    
-    return this.get<{ data: Campaign[] }>(`${this.config.adAccountId}/campaigns`, params);
+
+    return this.get<{ data: Campaign[] }>(`${accountId}/campaigns`, params);
   }
 
   /**
@@ -356,7 +356,7 @@ export class MetaClient {
   /**
    * Cria uma nova campanha
    */
-  async createCampaign(params: {
+  async createCampaign(accountId: string, params: {
     name: string;
     objective: string;
     status?: string;
@@ -372,7 +372,7 @@ export class MetaClient {
     is_skadnetwork_attribution?: boolean;
     promoted_object?: object;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/campaigns`, {
+    return this.post<{ id: string }>(`${accountId}/campaigns`, {
       ...params,
       special_ad_categories: params.special_ad_categories || [],
       // Campo obrigatório a partir da v24.0 para campanhas sem CBO
@@ -407,13 +407,14 @@ export class MetaClient {
    * Lista ad sets da conta
    */
   async listAdSets(
+    accountId: string,
     fields: string[] = ['id', 'name', 'status', 'campaign_id', 'daily_budget'],
     effectiveStatus?: string[]
   ): Promise<{ data: AdSet[] }> {
     const params: Record<string, string> = {
       fields: fields.join(','),
     };
-    
+
     // Adiciona filtro por effective_status se especificado
     if (effectiveStatus && effectiveStatus.length > 0) {
       params.filtering = JSON.stringify([{
@@ -422,8 +423,8 @@ export class MetaClient {
         value: effectiveStatus,
       }]);
     }
-    
-    return this.get<{ data: AdSet[] }>(`${this.config.adAccountId}/adsets`, params);
+
+    return this.get<{ data: AdSet[] }>(`${accountId}/adsets`, params);
   }
 
   /**
@@ -439,7 +440,7 @@ export class MetaClient {
   /**
    * Cria um novo ad set
    */
-  async createAdSet(params: {
+  async createAdSet(accountId: string, params: {
     name: string;
     campaign_id: string;
     billing_event: string;
@@ -492,7 +493,7 @@ export class MetaClient {
     dsa_payor?: string;
     adlabels?: Array<{ id: string }>;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/adsets`, {
+    return this.post<{ id: string }>(`${accountId}/adsets`, {
       ...params,
       // Campo obrigatório a partir da v24.0
       bid_strategy: params.bid_strategy ?? 'LOWEST_COST_WITHOUT_CAP',
@@ -533,8 +534,8 @@ export class MetaClient {
   /**
    * Lista anúncios da conta
    */
-  async listAds(fields: string[] = ['id', 'name', 'status', 'adset_id', 'effective_status']): Promise<{ data: Ad[] }> {
-    return this.get<{ data: Ad[] }>(`${this.config.adAccountId}/ads`, {
+  async listAds(accountId: string, fields: string[] = ['id', 'name', 'status', 'adset_id', 'effective_status']): Promise<{ data: Ad[] }> {
+    return this.get<{ data: Ad[] }>(`${accountId}/ads`, {
       fields: fields.join(','),
     });
   }
@@ -564,7 +565,7 @@ export class MetaClient {
   /**
    * Cria um novo anúncio
    */
-  async createAd(params: {
+  async createAd(accountId: string, params: {
     name: string;
     adset_id: string;
     creative: { creative_id: string } | object;
@@ -575,7 +576,7 @@ export class MetaClient {
     conversion_domain?: string;
     adlabels?: Array<{ id: string }>;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/ads`, params);
+    return this.post<{ id: string }>(`${accountId}/ads`, params);
   }
 
   /**
@@ -600,8 +601,8 @@ export class MetaClient {
   /**
    * Lista criativos da conta
    */
-  async listCreatives(fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url']): Promise<{ data: AdCreative[] }> {
-    return this.get<{ data: AdCreative[] }>(`${this.config.adAccountId}/adcreatives`, {
+  async listCreatives(accountId: string, fields: string[] = ['id', 'name', 'object_story_spec', 'thumbnail_url']): Promise<{ data: AdCreative[] }> {
+    return this.get<{ data: AdCreative[] }>(`${accountId}/adcreatives`, {
       fields: fields.join(','),
     });
   }
@@ -619,7 +620,7 @@ export class MetaClient {
   /**
    * Cria um novo criativo
    */
-  async createCreative(params: {
+  async createCreative(accountId: string, params: {
     name: string;
     object_story_spec?: object;
     object_story_id?: string;
@@ -631,7 +632,7 @@ export class MetaClient {
     creative_features_spec?: object;
     platform_customizations?: object;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/adcreatives`, params);
+    return this.post<{ id: string }>(`${accountId}/adcreatives`, params);
   }
 
   // ==================== UPLOAD DE IMAGEM ====================
@@ -641,7 +642,7 @@ export class MetaClient {
    * Fluxo: download da URL → conversão para base64 → POST com parâmetro 'bytes'.
    * A API da Meta aceita APENAS 'bytes' (base64) ou 'copy_from', NÃO aceita URL direta.
    */
-  async uploadImageFromUrl(imageUrl: string): Promise<unknown> {
+  async uploadImageFromUrl(accountId: string, imageUrl: string): Promise<unknown> {
     // 1. Download da imagem
     let imageResponse: Response;
     try {
@@ -675,7 +676,7 @@ export class MetaClient {
     }
 
     // 3. Enviar como 'bytes' (parâmetro correto da API Meta)
-    return this.post(`${this.config.adAccountId}/adimages`, {
+    return this.post(`${accountId}/adimages`, {
       bytes: base64Data,
     });
   }
@@ -747,6 +748,7 @@ export class MetaClient {
    * Obtém insights da conta de anúncios
    */
   async getAccountInsights(
+    accountId: string,
     params: {
       fields?: string[];
       date_preset?: string;
@@ -755,7 +757,7 @@ export class MetaClient {
       use_unified_attribution_setting?: boolean;
     } = {}
   ): Promise<{ data: InsightsResult[] }> {
-    return this.getInsights(this.config.adAccountId, params);
+    return this.getInsights(accountId, params);
   }
 
   // ==================== AUDIÊNCIAS ====================
@@ -766,9 +768,10 @@ export class MetaClient {
    * Use approximate_count_lower_bound e approximate_count_upper_bound se precisar do tamanho.
    */
   async listCustomAudiences(
+    accountId: string,
     fields: string[] = ['id', 'name', 'subtype']
   ): Promise<{ data: CustomAudience[] }> {
-    return this.get<{ data: CustomAudience[] }>(`${this.config.adAccountId}/customaudiences`, {
+    return this.get<{ data: CustomAudience[] }>(`${accountId}/customaudiences`, {
       fields: fields.join(','),
     });
   }
@@ -776,7 +779,7 @@ export class MetaClient {
   /**
    * Cria uma audiência customizada
    */
-  async createCustomAudience(params: {
+  async createCustomAudience(accountId: string, params: {
     name: string;
     subtype: string;
     description?: string;
@@ -795,19 +798,19 @@ export class MetaClient {
       ...(params.pixel_id && { pixel_id: params.pixel_id }),
       ...(params.prefill !== undefined && { prefill: params.prefill }),
     };
-    return this.post<{ id: string }>(`${this.config.adAccountId}/customaudiences`, apiParams);
+    return this.post<{ id: string }>(`${accountId}/customaudiences`, apiParams);
   }
 
   /**
    * Obtém estimativa de alcance
    */
-  async getReachEstimate(params: { targeting_spec: object; optimize_for?: string }): Promise<{
+  async getReachEstimate(accountId: string, params: { targeting_spec: object; optimize_for?: string }): Promise<{
     data: {
       users_lower_bound: number;
       users_upper_bound: number;
     };
   }> {
-    return this.get(`${this.config.adAccountId}/reachestimate`, {
+    return this.get(`${accountId}/reachestimate`, {
       targeting_spec: JSON.stringify(params.targeting_spec),
       ...(params.optimize_for && { optimize_for: params.optimize_for }),
     });
@@ -820,10 +823,11 @@ export class MetaClient {
    * Essencial para obter pixel_id ao criar ad sets com OFFSITE_CONVERSIONS
    */
   async listPixels(
+    accountId: string,
     fields: string[] = ['id', 'name', 'last_fired_time', 'is_created_by_business']
   ): Promise<{ data: Array<{ id: string; name: string; last_fired_time?: string; [key: string]: unknown }> }> {
     return this.get<{ data: Array<{ id: string; name: string; last_fired_time?: string; [key: string]: unknown }> }>(
-      `${this.config.adAccountId}/adspixels`,
+      `${accountId}/adspixels`,
       { fields: fields.join(',') }
     );
   }
@@ -881,12 +885,12 @@ export class MetaClient {
   /**
    * Faz upload de um vídeo via URL
    */
-  async uploadVideo(params: {
+  async uploadVideo(accountId: string, params: {
     file_url: string;
     title?: string;
     description?: string;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/advideos`, params);
+    return this.post<{ id: string }>(`${accountId}/advideos`, params);
   }
 
   /**
@@ -901,17 +905,18 @@ export class MetaClient {
 
   // ==================== VALUE RULES ====================
 
-  async createValueRuleSet(params: {
+  async createValueRuleSet(accountId: string, params: {
     name: string;
     rules: Array<Record<string, unknown>>;
   }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/value_rule_set`, params);
+    return this.post<{ id: string }>(`${accountId}/value_rule_set`, params);
   }
 
   async listValueRuleSets(
+    accountId: string,
     fields: string[] = ['id', 'name', 'rules']
   ): Promise<{ data: Array<Record<string, unknown>> }> {
-    return this.get(`${this.config.adAccountId}/value_rule_set`, { fields: fields.join(',') });
+    return this.get(`${accountId}/value_rule_set`, { fields: fields.join(',') });
   }
 
   async getValueRuleSet(
@@ -934,14 +939,15 @@ export class MetaClient {
 
   // ==================== AD LABELS ====================
 
-  async createAdLabel(params: { name: string }): Promise<{ id: string }> {
-    return this.post<{ id: string }>(`${this.config.adAccountId}/adlabels`, params);
+  async createAdLabel(accountId: string, params: { name: string }): Promise<{ id: string }> {
+    return this.post<{ id: string }>(`${accountId}/adlabels`, params);
   }
 
   async listAdLabels(
+    accountId: string,
     fields: string[] = ['id', 'name', 'created_time']
   ): Promise<{ data: Array<Record<string, unknown>> }> {
-    return this.get(`${this.config.adAccountId}/adlabels`, { fields: fields.join(',') });
+    return this.get(`${accountId}/adlabels`, { fields: fields.join(',') });
   }
 
   // ==================== CREATIVE PREVIEW ====================

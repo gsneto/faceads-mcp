@@ -9,7 +9,6 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 export interface AuthContext {
   accessToken: string;
-  adAccountId: string;
   apiVersion?: string;
   userId?: string;
   permissions?: 'read' | 'readwrite';
