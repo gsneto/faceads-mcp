@@ -26,8 +26,7 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
       "command": "npx",
       "args": ["-y", "fb-marketing-mcp"],
       "env": {
-        "META_ACCESS_TOKEN": "seu_token_aqui",
-        "META_AD_ACCOUNT_ID": "act_123456789"
+        "META_ACCESS_TOKEN": "seu_token_aqui"
       }
     }
   }
@@ -36,8 +35,9 @@ Configure o MCP `fb-marketing-mcp` no seu cliente:
 
 ### Variáveis de Ambiente
 - `META_ACCESS_TOKEN` - Token de acesso da API (obrigatório para execução)
-- `META_AD_ACCOUNT_ID` - ID da conta de anúncios (obrigatório para execução)
 - `META_API_VERSION` - Versão da API (opcional, default: v24.0)
+
+**Multi-Account:** Um token pode acessar múltiplas contas. Use `discover_ad_accounts` para listar e passe `account_id` em cada chamada.
 
 **Nota**: Para apenas consultar documentação, as variáveis de ambiente não são necessárias.
 
@@ -226,8 +226,8 @@ IA: [Usa execute_api com:
 - Confirmar com o usuário antes de criar ou modificar recursos
 - Criar campanhas inicialmente com status PAUSED
 - Validar parâmetros obrigatórios antes de executar
-- **NUNCA inventar IDs de conta** - sempre usar `META_AD_ACCOUNT_ID` configurado no ambiente
-- **Descobrir o ID da conta real** antes de usar `execute_api` com `GET me/adaccounts`
+- **NUNCA inventar IDs de conta** - sempre usar `discover_ad_accounts` para obter IDs reais
+- **Passar `account_id` explicitamente** em cada chamada de tool que opera em nível de conta
 
 ### Parâmetros Obrigatórios (v24.0+)
 - **Campanhas sem CBO**: Incluir `is_adset_budget_sharing_enabled` (ver diferença abaixo)
@@ -281,7 +281,7 @@ Use `search_geolocation` para obter os keys corretos. Exemplos:
 - Não exceder orçamentos sem confirmação explícita
 - Não ativar campanhas automaticamente
 - Alertar sobre targeting muito restrito ou muito amplo
-- Não usar IDs de conta arbitrários - a conta de anúncios é definida pela variável de ambiente
+- Não usar IDs de conta arbitrários - sempre obter via `discover_ad_accounts`
 
 ### Boas Práticas
 - Sugerir nomenclatura consistente
@@ -446,17 +446,18 @@ A tool `execute_api` permite executar qualquer endpoint da Facebook Marketing AP
 
 ### Placeholder de Conta
 
-Use `{ad_account_id}` no endpoint para referenciar a conta configurada em `META_AD_ACCOUNT_ID`:
+Use `{ad_account_id}` no endpoint junto com o parâmetro `account_id` para substituição automática:
 
 ```json
 {
   "method": "POST",
   "endpoint": "{ad_account_id}/adimages",
+  "account_id": "act_123456789",
   "params": { "filename": "/path/to/image.png" }
 }
 ```
 
-**Proteção automática**: Se você passar um `act_XXXX` diferente do configurado, a tool substituirá automaticamente pelo ID correto e exibirá um aviso.
+O `{ad_account_id}` será substituído pelo valor de `account_id`.
 
 ### Exemplos Comuns
 
@@ -611,14 +612,7 @@ Use os prompts do MCP para contexto adicional:
 
 **Causa**: Uso de ID de conta inventado ou de exemplo da documentação.
 
-**Solução**: Sempre descubra o ID real ANTES de usar `execute_api`:
-```json
-{
-  "method": "GET",
-  "endpoint": "me/adaccounts",
-  "params": { "fields": "id,name,account_status" }
-}
-```
+**Solução**: Use `discover_ad_accounts` para obter IDs reais e passe `account_id` em cada chamada.
 
 ### Erro: `is_adset_budget_sharing_enabled` Obrigatório (subcódigo 4834011)
 

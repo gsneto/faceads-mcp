@@ -33,8 +33,7 @@ Este MCP (Model Context Protocol) permite que IAs:
       "command": "npx",
       "args": ["-y", "fb-marketing-mcp"],
       "env": {
-        "META_ACCESS_TOKEN": "seu_token_aqui",
-        "META_AD_ACCOUNT_ID": "act_123456789"
+        "META_ACCESS_TOKEN": "seu_token_aqui"
       }
     }
   }
@@ -46,10 +45,18 @@ Este MCP (Model Context Protocol) permite que IAs:
 | Variável | Obrigatório | Descrição |
 |----------|-------------|-----------|
 | `META_ACCESS_TOKEN` | Para execução | Token de acesso da API |
-| `META_AD_ACCOUNT_ID` | Para execução | ID da conta de anúncios (act_XXXXX) |
 | `META_API_VERSION` | Não | Versão da API (default: v24.0) |
 
 > **Nota**: As variáveis de ambiente são necessárias apenas para as tools de execução. A consulta de documentação funciona sem configuração.
+
+### Multi-Account
+
+Um token Meta pode ter acesso a múltiplas contas de anúncio. O fluxo recomendado:
+
+1. `discover_ad_accounts` → lista todas as contas disponíveis
+2. Passe `account_id: "act_XXXXX"` em cada chamada de tool que opera em nível de conta
+
+Não é necessário configurar um `account_id` padrão — ele é passado explicitamente em cada chamada.
 
 ## Funcionalidades
 
@@ -188,8 +195,7 @@ Para desenvolvimento e testes, configure o MCP para usar o código local em vez 
       "command": "node",
       "args": ["/caminho/absoluto/para/projeto/dist/index.js"],
       "env": {
-        "META_ACCESS_TOKEN": "seu_token_aqui",
-        "META_AD_ACCOUNT_ID": "act_123456789"
+        "META_ACCESS_TOKEN": "seu_token_aqui"
       }
     }
   }

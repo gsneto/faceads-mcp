@@ -24,8 +24,7 @@ Campaign (Campanha)
 ```bash
 # Variáveis de ambiente necessárias
 META_ACCESS_TOKEN=EAAxxxxxxx...
-META_AD_ACCOUNT_ID=act_123456789
-META_API_VERSION=v24.0
+META_API_VERSION=v24.0  # opcional, default: v24.0
 ```
 
 ### Base URL
@@ -51,7 +50,7 @@ Resposta:
 }
 ```
 
-> **NUNCA** invente ou use IDs de exemplo da documentação. O ID correto está configurado em `META_AD_ACCOUNT_ID` ou pode ser descoberto via `me/adaccounts`.
+> **NUNCA** invente ou use IDs de exemplo da documentação. Use `discover_ad_accounts` ou `GET me/adaccounts` para obter IDs reais. Passe `account_id` em cada chamada de tool.
 
 ### Descobrir Páginas do Facebook
 

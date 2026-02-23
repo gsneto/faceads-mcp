@@ -25,6 +25,8 @@ Este documento registra chamadas feitas via `execute_api` que podem se tornar to
 
 **Uso**: Descobrir o ID real da conta antes de operações (evita erro de ID inventado)
 
+> **NOTA:** Agora existe a tool `discover_ad_accounts` que substitui esta chamada. Use-a diretamente.
+
 ```
 Método: GET
 Endpoint: me/adaccounts
@@ -32,7 +34,7 @@ Params:
   - fields: id, name, account_status
 ```
 
-**Frequência**: Alta (deveria ser a primeira chamada em qualquer sessão)
+**Frequência**: Alta (deve ser a primeira chamada de qualquer sessão)
 
 ---
 

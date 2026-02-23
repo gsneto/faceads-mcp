@@ -3912,6 +3912,25 @@ function processEndpoint(endpoint: string, accountId?: string): { processedEndpo
   return { processedEndpoint, warnings };
 }
 
+/**
+ * Remove access_token de URLs de paginação para não expor credenciais no output.
+ */
+function sanitizePagingUrls(obj: unknown): unknown {
+  if (obj === null || obj === undefined || typeof obj !== 'object') return obj;
+  if (Array.isArray(obj)) return obj.map(sanitizePagingUrls);
+
+  const record = obj as Record<string, unknown>;
+  const result: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(record)) {
+    if ((key === 'next' || key === 'previous') && typeof value === 'string' && value.includes('access_token=')) {
+      result[key] = value.replace(/access_token=[^&]+/, 'access_token=***');
+    } else {
+      result[key] = sanitizePagingUrls(value);
+    }
+  }
+  return result;
+}
+
 async function handleExecuteApi(
   client: MetaClient,
   args: ExecuteApiArgs
@@ -3951,11 +3970,14 @@ async function handleExecuteApi(
   // Montar resposta com avisos se houver
   const warningsText = warnings.length > 0 ? `\n\n${warnings.join('\n')}\n` : '';
 
+  // Sanitizar tokens de URLs de paginação para não expor access_token
+  const sanitizedResult = sanitizePagingUrls(result);
+
   return {
     content: [
       {
         type: 'text',
-        text: `# Resultado da API${warningsText}\n\n**Método:** ${method}\n**Endpoint:** ${processedEndpoint}\n\n\`\`\`json\n${JSON.stringify(result, null, 2)}\n\`\`\``,
+        text: `# Resultado da API${warningsText}\n\n**Método:** ${method}\n**Endpoint:** ${processedEndpoint}\n\n\`\`\`json\n${JSON.stringify(sanitizedResult, null, 2)}\n\`\`\``,
       },
     ],
   };
