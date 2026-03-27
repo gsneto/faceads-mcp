@@ -97,7 +97,7 @@ export const apiTools = [
   {
     name: 'discover_ad_accounts',
     description:
-      'Descobre as contas de anúncios do usuário. DEVE ser a primeira chamada de qualquer sessão para obter o ID real da conta (act_XXXXX). Evita erros de ID inventado.',
+      'Discover ad accounts — list all ad accounts for the authenticated user. Descobre as contas de anúncios do usuário. DEVE ser a primeira chamada de qualquer sessão para obter o ID real da conta (act_XXXXX). Evita erros de ID inventado.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -112,7 +112,7 @@ export const apiTools = [
   {
     name: 'list_facebook_pages',
     description:
-      'Lista as páginas do Facebook do usuário. Necessário para obter o page_id usado na criação de criativos. Retorna também o access_token da página se necessário.',
+      'List Facebook pages — get all pages owned by the user. Lista as páginas do Facebook do usuário. Necessário para obter o page_id usado na criação de criativos. Retorna também o access_token da página se necessário.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -127,7 +127,7 @@ export const apiTools = [
   {
     name: 'get_instagram_account',
     description:
-      'Obtém a conta do Instagram vinculada a uma página do Facebook. Retorna o ID correto do Instagram (formato novo, não o da UI do Meta Ads) para usar no campo instagram_user_id ao criar criativos.',
+      'Get Instagram account — get the Instagram business account linked to a Facebook page. Obtém a conta do Instagram vinculada a uma página do Facebook. Retorna o ID correto do Instagram para usar no campo instagram_user_id ao criar criativos.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -145,7 +145,7 @@ export const apiTools = [
   // ==================== CAMPANHAS ====================
   {
     name: 'list_campaigns',
-    description: `Lista campanhas da conta de anúncios. Suporta filtro por status.
+    description: `List campaigns — get all campaigns from an ad account with optional status filter. Lista campanhas da conta de anúncios. Suporta filtro por status.
 
 FILTRAR POR STATUS:
 - effective_status: ["ACTIVE"] → só campanhas ativas
@@ -176,7 +176,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'get_campaign',
-    description: 'Obtém detalhes de uma campanha específica, incluindo informações de orçamento para verificar se é CBO (Campaign Budget Optimization). Campos padrão: id, name, status, objective, daily_budget, lifetime_budget, budget_remaining.',
+    description: 'Get campaign details — retrieve a specific campaign including budget info (CBO check). Obtém detalhes de uma campanha específica, incluindo informações de orçamento para verificar se é CBO (Campaign Budget Optimization). Campos padrão: id, name, status, objective, daily_budget, lifetime_budget, budget_remaining.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -192,7 +192,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'create_campaign',
-    description: `Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar.
+    description: `Create campaign — create a new ad campaign with objective, budget, and bid strategy. Cria uma nova campanha. Sempre criar com status PAUSED para revisão antes de ativar.
 
 **OBJETIVOS DISPONÍVEIS:**
 - OUTCOME_SALES (conversões) - requer promoted_object no ad set
@@ -262,7 +262,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'update_campaign',
-    description: 'Atualiza uma campanha existente. Suporta alteração de orçamento, bid strategy, schedule e mais.',
+    description: 'Update campaign — modify budget, bid strategy, status, schedule, or other campaign settings. Atualiza uma campanha existente.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -291,7 +291,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'pause_campaign',
-    description: 'Pausa uma campanha. Requer API key configurada.',
+    description: 'Pause campaign — set campaign status to PAUSED. Pausa uma campanha.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -302,7 +302,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   },
   {
     name: 'activate_campaign',
-    description: 'Ativa uma campanha pausada. Requer API key configurada.',
+    description: 'Activate campaign — set a paused campaign to ACTIVE. Ativa uma campanha pausada.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -315,7 +315,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
   // ==================== AD SETS ====================
   {
     name: 'list_adsets',
-    description: `Lista conjuntos de anúncios da conta. Suporta filtro por status.
+    description: `List ad sets — get all ad sets from an ad account with optional status filter. Lista conjuntos de anúncios da conta. Suporta filtro por status.
 
 FILTRAR POR STATUS:
 - effective_status: ["ACTIVE"] → só ad sets ativos
@@ -341,7 +341,7 @@ DICA: Use effective_status para economizar tokens.`,
   },
   {
     name: 'get_adset',
-    description: 'Obtém detalhes de um conjunto de anúncios específico, incluindo targeting, orçamento, atribuição incremental e audiências excluídas.',
+    description: 'Get ad set details — retrieve targeting, budget, attribution, and excluded audiences. Obtém detalhes de um conjunto de anúncios específico.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -357,7 +357,7 @@ DICA: Use effective_status para economizar tokens.`,
   },
   {
     name: 'create_adset',
-    description: `Cria um novo conjunto de anúncios (Ad Set).
+    description: `Create ad set — create a new ad set with targeting, budget, optimization, and schedule. Cria um novo conjunto de anúncios (Ad Set).
 
 **ANTES DE CRIAR:**
 1. Use \`list_pixels\` para obter pixel_id (se OFFSITE_CONVERSIONS)
@@ -565,7 +565,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'update_adset',
-    description: 'Atualiza um conjunto de anúncios. Suporta alteração de orçamento, bid strategy, targeting, schedule, promoted_object e mais.',
+    description: 'Update ad set — modify budget, bid strategy, targeting, schedule, or promoted object. Atualiza um conjunto de anúncios.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -629,7 +629,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'pause_adset',
-    description: 'Pausa um conjunto de anúncios. Atalho para update_adset com status PAUSED.',
+    description: 'Pause ad set — set ad set status to PAUSED. Pausa um conjunto de anúncios.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -640,7 +640,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'activate_adset',
-    description: 'Ativa um conjunto de anúncios pausado. Atalho para update_adset com status ACTIVE.',
+    description: 'Activate ad set — set a paused ad set to ACTIVE. Ativa um conjunto de anúncios pausado.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -653,7 +653,7 @@ Exemplo correto: key 460 = São Paulo, BR
   // ==================== ADS ====================
   {
     name: 'list_ads',
-    description: 'Lista todos os anúncios da conta de anúncios.',
+    description: 'List ads — get all ads from an ad account. Lista todos os anúncios da conta de anúncios.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -669,7 +669,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'list_campaign_ads',
-    description: 'Lista todos os anúncios de uma campanha específica. Muito útil para análise de performance por campanha.',
+    description: 'List campaign ads — get all ads from a specific campaign. Lista todos os anúncios de uma campanha específica.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -685,7 +685,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'get_ad',
-    description: 'Obtém detalhes de um anúncio específico, incluindo effective_status para ver o status real de entrega.',
+    description: 'Get ad details — retrieve a specific ad including delivery status. Obtém detalhes de um anúncio específico, incluindo effective_status.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -701,7 +701,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'create_ad',
-    description: `Cria um novo anúncio. Requer API key configurada.
+    description: `Create ad — create a new ad linking an ad set to a creative. Cria um novo anúncio.
 
 **Novos campos:**
 - tracking_specs: Especificações de rastreamento customizado
@@ -730,7 +730,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'update_ad',
-    description: `Atualiza um anúncio existente. Suporta alteração de nome, status, creative swap, tracking e mais.
+    description: `Update ad — modify name, status, creative, or tracking specs. Atualiza um anúncio existente.
 
 **Creative Swap:** Use creative: {"creative_id": "NEW_ID"} para trocar criativo sem recriar o ad.`,
     inputSchema: {
@@ -753,7 +753,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'pause_ad',
-    description: 'Pausa um anúncio. Atalho para update_ad com status PAUSED.',
+    description: 'Pause ad — set ad status to PAUSED. Pausa um anúncio.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -764,7 +764,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'activate_ad',
-    description: 'Ativa um anúncio pausado. Atalho para update_ad com status ACTIVE.',
+    description: 'Activate ad — set a paused ad to ACTIVE. Ativa um anúncio pausado.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -777,7 +777,7 @@ Exemplo correto: key 460 = São Paulo, BR
   // ==================== CRIATIVOS ====================
   {
     name: 'list_creatives',
-    description: 'Lista todos os criativos da conta de anúncios.',
+    description: 'List creatives — get all ad creatives from an ad account. Lista todos os criativos da conta de anúncios.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -793,7 +793,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'get_creative',
-    description: 'Obtém detalhes de um criativo específico.',
+    description: 'Get creative details — retrieve a specific ad creative. Obtém detalhes de um criativo específico.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -809,7 +809,7 @@ Exemplo correto: key 460 = São Paulo, BR
   },
   {
     name: 'create_creative',
-    description: `Cria um novo criativo para anúncios. Suporta Link Ads, Video Ads, Carousel Ads e Dynamic Creative (DCO).
+    description: `Create creative — create an ad creative (link, video, carousel, or DCO). Cria um novo criativo para anúncios. Suporta Link Ads, Video Ads, Carousel Ads e Dynamic Creative (DCO).
 
 **Link Ad (object_story_spec.link_data):**
 \`\`\`json
@@ -948,7 +948,7 @@ Exemplo correto: key 460 = São Paulo, BR
   // ==================== INSIGHTS ====================
   {
     name: 'get_account_insights',
-    description: `Obtém métricas agregadas da conta de anúncios.
+    description: `Get account insights — retrieve aggregated metrics (spend, impressions, conversions) for an ad account. Obtém métricas agregadas da conta de anúncios.
 
 PARÂMETROS DE ATRIBUIÇÃO:
 - action_attribution_windows: Quebra conversões por janela (1d_click, 7d_click, 1d_view, incrementality)
@@ -1002,7 +1002,7 @@ INTERPRETAÇÃO:
   },
   {
     name: 'get_campaign_insights',
-    description: `Obtém métricas de uma campanha específica.
+    description: `Get campaign insights — retrieve performance metrics for a specific campaign. Obtém métricas de uma campanha específica.
 
 PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
 - action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
@@ -1048,7 +1048,7 @@ DICA: Para análise de eficiência real, use get_attribution_comparison que já 
   },
   {
     name: 'get_adset_insights',
-    description: `Obtém métricas de um conjunto de anúncios.
+    description: `Get ad set insights — retrieve performance metrics for a specific ad set. Obtém métricas de um conjunto de anúncios.
 
 PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
 - action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
@@ -1093,7 +1093,7 @@ DICA: Para análise de eficiência real, use get_attribution_comparison que já 
   },
   {
     name: 'get_ad_insights',
-    description: `Obtém métricas de um anúncio específico. Completa a hierarquia de insights (conta > campanha > adset > ad).
+    description: `Get ad insights — retrieve performance metrics for a specific ad. Obtém métricas de um anúncio específico. Completa a hierarquia de insights (conta > campanha > adset > ad).
 
 PARÂMETROS DE ATRIBUIÇÃO AVANÇADA:
 - action_attribution_windows: ["1d_click", "7d_click", "incrementality"] - quebra conversões por janela
@@ -1144,7 +1144,7 @@ DICA: Para comparação formatada entre modelos de atribuição, use get_attribu
   },
   {
     name: 'get_attribution_comparison',
-    description: `Compara métricas de conversão entre diferentes modelos de atribuição (All Conversions vs First Conversion vs Incremental).
+    description: `Get attribution comparison — compare conversions across attribution models (all vs first vs incremental). Compara métricas de conversão entre diferentes modelos de atribuição.
     
 QUANDO USAR:
 - Análise de eficiência real de anúncios/campanhas
@@ -1188,7 +1188,7 @@ INTERPRETAÇÃO:
   },
   {
     name: 'get_performance_summary',
-    description: `Resumo de performance da conta com métricas agregadas por atribuição (all vs incremental).
+    description: `Get performance summary — account performance overview with aggregated attribution metrics. Resumo de performance da conta com métricas agregadas por atribuição (all vs incremental).
 
 RETORNA:
 - spend total do período
@@ -1230,7 +1230,7 @@ action_types: ["purchase", "lead"]  // opcional, default: ["purchase"]`,
   },
   {
     name: 'list_campaign_ads_with_insights',
-    description: `Lista todos os anúncios de uma campanha JÁ COM métricas de insights.
+    description: `List campaign ads with insights — get all ads from a campaign with performance metrics included. Lista todos os anúncios de uma campanha JÁ COM métricas de insights.
 
 RESOLVE O PROBLEMA N+1:
 - Antes: list_campaign_ads → loop de get_ad_insights por ad
@@ -1281,7 +1281,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   // ==================== AUDIÊNCIAS ====================
   {
     name: 'list_custom_audiences',
-    description: 'Lista audiências customizadas da conta. NOTA: O campo approximate_count foi removido. Use approximate_count_lower_bound e approximate_count_upper_bound, ou omita campos de tamanho.',
+    description: 'List custom audiences — get all custom audiences from an ad account. Lista audiências customizadas da conta. NOTA: approximate_count depreciado, use approximate_count_lower_bound e approximate_count_upper_bound.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1293,7 +1293,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   },
   {
     name: 'create_custom_audience',
-    description: `Cria uma audiência customizada.
+    description: `Create custom audience — create a custom audience (website, app, engagement, or lookalike). Cria uma audiência customizada.
 
 **Subtipos e campos obrigatórios:**
 - CUSTOM: Requer customer_file_source (ex: "USER_PROVIDED_ONLY")
@@ -1345,7 +1345,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   },
   {
     name: 'get_reach_estimate',
-    description: 'Obtém estimativa de alcance para um targeting. Requer API key configurada.',
+    description: 'Get reach estimate — estimate audience size for a targeting spec. Obtém estimativa de alcance para um targeting.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1359,7 +1359,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   // ==================== PIXELS ====================
   {
     name: 'list_pixels',
-    description: `Lista os pixels da conta de anúncios.
+    description: `List pixels — get all Meta pixels from an ad account. Lista os pixels da conta de anúncios.
 
 **QUANDO USAR:**
 - ANTES de criar ad sets com optimization_goal: OFFSITE_CONVERSIONS
@@ -1398,7 +1398,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   // ==================== UPLOAD DE IMAGEM ====================
   {
     name: 'upload_image',
-    description: `Faz upload de uma imagem para a conta de anúncios e retorna o image_hash.
+    description: `Upload image — upload an image to the ad account and get the image_hash. Faz upload de uma imagem para a conta de anúncios e retorna o image_hash.
 
 **QUANDO USAR:**
 - Antes de criar criativos que precisam de imagem
@@ -1435,7 +1435,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   // ==================== DATASET QUALITY (EMQ) ====================
   {
     name: 'get_dataset_quality',
-    description: `Verifica a qualidade do dataset (Event Match Quality - EMQ) de um pixel.
+    description: `Get dataset quality — check pixel Event Match Quality (EMQ) score. Verifica a qualidade do dataset de um pixel.
 
 **QUANDO USAR:**
 - Verificar saúde da implementação CAPI (Conversions API)
@@ -1463,7 +1463,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
   // ==================== GEOLOCALIZAÇÃO ====================
   {
     name: 'search_geolocation',
-    description: `Busca localizações para targeting de anúncios.
+    description: `Search geolocation — find location targeting keys (countries, regions, cities, zip codes). Busca localizações para targeting de anúncios.
 
 **CRÍTICO:** SEMPRE use esta tool para obter os keys corretos de localização!
 Os keys do Meta são ESPECÍFICOS e NÃO correspondem a códigos geográficos padrão.
@@ -1516,7 +1516,7 @@ Os keys do Meta são ESPECÍFICOS e NÃO correspondem a códigos geográficos pa
   // ==================== API CUSTOMIZADA ====================
   {
     name: 'execute_api',
-    description: `Executa chamada customizada à API da Meta para endpoints sem tool específica.
+    description: `Execute API — make a custom Meta Marketing API call for endpoints without a dedicated tool. Executa chamada customizada à API da Meta para endpoints sem tool específica.
 
 CASOS DE USO:
 - Duplicar campanha: POST {id}/copies (params: deep_copy, status_option)
@@ -1564,7 +1564,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== VÍDEO ====================
   {
     name: 'upload_video',
-    description: `Faz upload de um vídeo para a conta de anúncios via URL.
+    description: `Upload video — upload a video to the ad account from a URL. Faz upload de um vídeo para a conta de anúncios via URL.
 
 **QUANDO USAR:**
 - Antes de criar criativos de vídeo
@@ -1589,7 +1589,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'get_video_status',
-    description: 'Verifica o status de processamento de um vídeo. Use após upload_video para confirmar que o vídeo está pronto.',
+    description: 'Get video status — check video processing status after upload. Verifica o status de processamento de um vídeo após upload.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1602,7 +1602,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== VALUE RULES ====================
   {
     name: 'create_value_rule_set',
-    description: 'Cria um conjunto de regras de valor para otimizar conversões com valores diferenciados (ex: por idade, gênero, localização).',
+    description: 'Create value rule set — create conversion value rules (by age, gender, location). Cria um conjunto de regras de valor para otimizar conversões com valores diferenciados.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1615,7 +1615,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'list_value_rule_sets',
-    description: 'Lista todos os conjuntos de regras de valor da conta.',
+    description: 'List value rule sets — get all value rule sets from an ad account. Lista todos os conjuntos de regras de valor da conta.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1627,7 +1627,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'get_value_rule_set',
-    description: 'Obtém detalhes de um conjunto de regras de valor específico.',
+    description: 'Get value rule set — retrieve details of a specific value rule set. Obtém detalhes de um conjunto de regras de valor específico.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1639,7 +1639,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'update_value_rule_set',
-    description: 'Atualiza um conjunto de regras de valor existente.',
+    description: 'Update value rule set — modify an existing value rule set. Atualiza um conjunto de regras de valor existente.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1652,7 +1652,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'delete_value_rule_set',
-    description: 'Deleta um conjunto de regras de valor.',
+    description: 'Delete value rule set — remove a value rule set. Deleta um conjunto de regras de valor.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1665,7 +1665,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== AD LABELS ====================
   {
     name: 'create_ad_label',
-    description: 'Cria um label para organizar campanhas, ad sets e ads.',
+    description: 'Create ad label — create a label to organize campaigns, ad sets, and ads. Cria um label para organizar campanhas, ad sets e ads.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1677,7 +1677,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'list_ad_labels',
-    description: 'Lista todos os labels da conta de anúncios.',
+    description: 'List ad labels — get all labels from an ad account. Lista todos os labels da conta de anúncios.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1691,7 +1691,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== CREATIVE PREVIEW ====================
   {
     name: 'preview_creative',
-    description: `Gera um preview HTML de um criativo em diferentes formatos.
+    description: `Preview creative — generate an HTML preview of a creative in different ad formats. Gera um preview HTML de um criativo em diferentes formatos.
 
 **Formatos disponíveis:**
 - DESKTOP_FEED_STANDARD: Feed desktop
@@ -1717,7 +1717,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== BUDGET SCHEDULE ====================
   {
     name: 'create_budget_schedule',
-    description: 'Cria um agendamento de orçamento para períodos de alta demanda (HDP). Permite aumentar o orçamento temporariamente.',
+    description: 'Create budget schedule — schedule a temporary budget increase for high-demand periods (HDP). Cria um agendamento de orçamento para períodos de alta demanda.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1732,7 +1732,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'get_budget_schedules',
-    description: 'Lista agendamentos de orçamento de uma campanha.',
+    description: 'Get budget schedules — list all budget schedules for a campaign. Lista agendamentos de orçamento de uma campanha.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1743,7 +1743,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'update_budget_schedule',
-    description: '[DEPRECATED v24.0] Atualiza um agendamento de orçamento. NOTA: Este endpoint está deprecated na API v24.0. Use delete + create para modificar schedules.',
+    description: '[DEPRECATED v24.0] Update budget schedule — modify budget schedule (deprecated, use delete + create instead). Atualiza um agendamento de orçamento.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1757,7 +1757,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   },
   {
     name: 'delete_budget_schedule',
-    description: 'Deleta um agendamento de orçamento.',
+    description: 'Delete budget schedule — remove a budget schedule. Deleta um agendamento de orçamento.',
     inputSchema: {
       type: 'object' as const,
       properties: {
@@ -1770,7 +1770,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
   // ==================== CONTEXTO ====================
   {
     name: 'get_skill',
-    description: `Retorna o conteúdo do SKILL.md - guia completo para atuar como gestor de tráfego Meta Ads.
+    description: `Get skill guide — retrieve the Meta Ads traffic manager guide (SKILL.md). Retorna o conteúdo do SKILL.md - guia completo para atuar como gestor de tráfego Meta Ads.
 
 Contém:
 - Capacidades e tools disponíveis
@@ -1790,7 +1790,7 @@ Use esta tool no início da conversa para se configurar como gestor de tráfego.
   },
   {
     name: 'get_playbook',
-    description: `Retorna o conteúdo do PLAYBOOK.md - regras de otimização e thresholds específicos.
+    description: `Get playbook — retrieve optimization rules and performance thresholds (PLAYBOOK.md). Retorna o conteúdo do PLAYBOOK.md - regras de otimização e thresholds específicos.
 
 Contém:
 - Thresholds de performance (CPA, ROAS, CTR, Hook Rate, Hold Rate)
@@ -1810,7 +1810,7 @@ Use esta tool quando precisar de regras específicas de otimização.`,
   },
   {
     name: 'get_andromeda',
-    description: `Retorna o conteúdo do ANDROMEDA.md - guia oficial sobre o Meta Andromeda para este MCP.
+    description: `Get Andromeda guide — retrieve the Meta Andromeda machine learning system guide (ANDROMEDA.md). Retorna o conteúdo do ANDROMEDA.md - guia oficial sobre o Meta Andromeda para este MCP.
 
 Contém:
 - O que é Meta Andromeda e a mudança de paradigma
