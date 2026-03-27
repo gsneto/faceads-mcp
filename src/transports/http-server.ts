@@ -18,6 +18,8 @@ import { isDatabaseConfigured, getPrisma } from '../db/prisma.js';
 import { decryptToken } from '../db/crypto.js';
 import { oauthRouter } from '../routes/oauth.js';
 import { scopeToPermission } from '../auth/oauth-utils.js';
+import { docsTools, handleDocsTool, isDocsTool } from '../docs-tools.js';
+import { apiTools, handleApiTool, isApiTool } from '../api-tools.js';
 
 interface HttpServerOptions {
   port: number;
@@ -266,13 +268,47 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       return;
     }
 
-    // Session ID expirado (server redeployado) — criar nova sessão e processar o request
-    // O client enviou um session ID que não existe mais (perdido após redeploy).
-    // Criamos uma sessão transparentemente para evitar erros no client.
+    // Session ID expirado (server redeployado) — handle requests directly
+    // The client still has a stale session ID from before the redeploy.
+    // We bypass the MCP transport and execute tool calls directly.
     if (sessionId && !sessions.has(sessionId)) {
-      console.error(`[MCP] Stale session ${sessionId} — creating new session and processing ${req.body?.method || 'unknown'} request`);
-      const { transport } = await createNewSession();
-      await withOptionalAuth(req, () => transport.handleRequest(req, res, req.body));
+      const body = req.body;
+      const method = body?.method;
+      const id = body?.id;
+
+      if (method === 'tools/call') {
+        const toolName = body.params?.name as string;
+        const toolArgs = body.params?.arguments || {};
+        console.error(`[MCP] Stale session — direct tools/call: ${toolName}`);
+
+        const result = await withOptionalAuth(req, async () => {
+          if (isApiTool(toolName)) {
+            return await handleApiTool(toolName, toolArgs);
+          } else if (isDocsTool(toolName)) {
+            return await handleDocsTool(toolName, toolArgs);
+          }
+          return { content: [{ type: 'text', text: `Tool not found: ${toolName}` }], isError: true };
+        });
+
+        res.json({ jsonrpc: '2.0', result, id });
+        return;
+      }
+
+      if (method === 'tools/list') {
+        console.error(`[MCP] Stale session — direct tools/list`);
+        // Auth already validated by mcpBearerGuard above
+        const tools = await withOptionalAuth(req, async () => [...docsTools, ...apiTools]);
+        res.json({ jsonrpc: '2.0', result: { tools }, id });
+        return;
+      }
+
+      // For other methods (initialize, etc.), ask client to re-initialize
+      console.error(`[MCP] Stale session — unhandled method: ${method}`);
+      res.status(400).json({
+        jsonrpc: '2.0',
+        error: { code: -32000, message: 'Session expired. Please reconnect.' },
+        id,
+      });
       return;
     }
 
@@ -295,12 +331,11 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       return;
     }
 
-    let session = sessions.get(sessionId);
+    const session = sessions.get(sessionId);
     if (!session) {
-      // Session expired (server redeployed) — create new session for SSE stream
-      console.error(`[MCP] GET stale session ${sessionId} — creating new session for SSE`);
-      const newSession = await createNewSession();
-      session = newSession;
+      console.error(`[MCP] GET stale session ${sessionId} — session expired`);
+      res.status(404).json({ error: 'Session expired. Please reconnect.' });
+      return;
     }
 
     await session.transport.handleRequest(req, res);
