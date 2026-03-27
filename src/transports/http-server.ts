@@ -227,10 +227,30 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
     next();
   }
 
+  async function createNewSession(): Promise<{ transport: StreamableHTTPServerTransport; server: Server }> {
+    const mcpServer = createServer();
+    const transport = new StreamableHTTPServerTransport({
+      sessionIdGenerator: () => randomUUID(),
+      onsessioninitialized: (newSessionId) => {
+        sessions.set(newSessionId, { transport, server: mcpServer });
+        console.error(`[MCP] Session initialized: ${newSessionId}`);
+      },
+    });
+
+    transport.onclose = () => {
+      const sid = transport.sessionId;
+      if (sid && sessions.has(sid)) {
+        sessions.delete(sid);
+        console.error(`[MCP] Session closed: ${sid}`);
+      }
+    };
+
+    await mcpServer.connect(transport);
+    return { transport, server: mcpServer };
+  }
+
   async function mcpPost(req: Request, res: Response) {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
-
-    console.error(`[MCP] POST received — sessionId: ${sessionId || 'none'}, content-type: ${req.headers['content-type']}, body method: ${req.body?.method || 'N/A'}, hasBody: ${!!req.body}`);
 
     // Sessão existente — reutilizar transport
     if (sessionId && sessions.has(sessionId)) {
@@ -239,32 +259,25 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       return;
     }
 
-    // Nova sessão — deve ser um initialize request
-    if (!sessionId && isInitializeRequest(req.body)) {
-      const mcpServer = createServer();
-      const transport = new StreamableHTTPServerTransport({
-        sessionIdGenerator: () => randomUUID(),
-        onsessioninitialized: (newSessionId) => {
-          sessions.set(newSessionId, { transport, server: mcpServer });
-          console.error(`[MCP] Session initialized: ${newSessionId}`);
-        },
-      });
+    // Nova sessão — initialize request (com ou sem session ID antigo)
+    if (isInitializeRequest(req.body)) {
+      const { transport } = await createNewSession();
+      await withOptionalAuth(req, () => transport.handleRequest(req, res, req.body));
+      return;
+    }
 
-      transport.onclose = () => {
-        const sid = transport.sessionId;
-        if (sid && sessions.has(sid)) {
-          sessions.delete(sid);
-          console.error(`[MCP] Session closed: ${sid}`);
-        }
-      };
-
-      await mcpServer.connect(transport);
+    // Session ID expirado (server redeployado) — criar nova sessão e processar o request
+    // O client enviou um session ID que não existe mais (perdido após redeploy).
+    // Criamos uma sessão transparentemente para evitar erros no client.
+    if (sessionId && !sessions.has(sessionId)) {
+      console.error(`[MCP] Stale session ${sessionId} — creating new session and processing ${req.body?.method || 'unknown'} request`);
+      const { transport } = await createNewSession();
       await withOptionalAuth(req, () => transport.handleRequest(req, res, req.body));
       return;
     }
 
     // Request inválido — sem sessão e não é initialize
-    console.error(`[MCP] 400 — sessionId: ${sessionId || 'none'}, isInit: ${isInitializeRequest(req.body)}, body: ${JSON.stringify(req.body)?.substring(0, 500)}`);
+    console.error(`[MCP] 400 — no sessionId, not initialize, body method: ${req.body?.method || 'N/A'}`);
     res.status(400).json({
       jsonrpc: '2.0',
       error: {
@@ -282,10 +295,12 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       return;
     }
 
-    const session = sessions.get(sessionId);
+    let session = sessions.get(sessionId);
     if (!session) {
-      res.status(404).json({ error: 'Session not found' });
-      return;
+      // Session expired (server redeployed) — create new session for SSE stream
+      console.error(`[MCP] GET stale session ${sessionId} — creating new session for SSE`);
+      const newSession = await createNewSession();
+      session = newSession;
     }
 
     await session.transport.handleRequest(req, res);
