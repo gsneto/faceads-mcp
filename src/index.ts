@@ -166,6 +166,14 @@ async function main() {
   }
 }
 
+// Prevent silent crashes — log to stderr so MCP client can see the error
+process.on('uncaughtException', (error) => {
+  console.error('[MCP] Uncaught exception:', error);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[MCP] Unhandled rejection:', reason);
+});
+
 main().catch((error) => {
   console.error('Erro fatal:', error);
   process.exit(1);

@@ -156,7 +156,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: {
           type: 'array',
           items: { type: 'string' },
@@ -226,7 +226,7 @@ DICA: Use effective_status para economizar tokens retornando só o que precisa.`
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome da campanha' },
         objective: {
           type: 'string',
@@ -325,7 +325,7 @@ DICA: Use effective_status para economizar tokens.`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
         effective_status: {
           type: 'array',
@@ -417,7 +417,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome do ad set' },
         campaign_id: { type: 'string', description: 'ID da campanha pai' },
         daily_budget: { type: 'number', description: 'Orçamento diário em centavos (mínimo 533 no Brasil). Mutuamente exclusivo com lifetime_budget.' },
@@ -657,7 +657,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: {
           type: 'array',
           items: { type: 'string' },
@@ -710,7 +710,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome do anúncio' },
         adset_id: { type: 'string', description: 'ID do ad set pai' },
         creative_id: { type: 'string', description: 'ID do criativo a usar' },
@@ -781,7 +781,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: {
           type: 'array',
           items: { type: 'string' },
@@ -861,7 +861,7 @@ Exemplo correto: key 460 = São Paulo, BR
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome do criativo' },
         object_story_spec: {
           type: 'object',
@@ -965,7 +965,7 @@ INTERPRETAÇÃO:
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         date_preset: {
           type: 'string',
           enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
@@ -1205,7 +1205,7 @@ action_types: ["purchase", "lead"]  // opcional, default: ["purchase"]`,
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         date_preset: {
           type: 'string',
           enum: ['today', 'yesterday', 'last_7d', 'last_14d', 'last_30d', 'this_month', 'last_month'],
@@ -1245,7 +1245,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         campaign_id: { type: 'string', description: 'ID da campanha' },
         date_preset: {
           type: 'string',
@@ -1285,7 +1285,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar. Evite approximate_count (depreciado)' },
       },
       required: ['account_id'],
@@ -1320,7 +1320,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome da audiência' },
         subtype: {
           type: 'string',
@@ -1349,7 +1349,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         targeting_spec: { type: 'object', description: 'Especificação de targeting' },
       },
       required: ['account_id', 'targeting_spec'],
@@ -1384,7 +1384,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: {
           type: 'array',
           items: { type: 'string' },
@@ -1425,7 +1425,7 @@ Para cada ad: id, name, status, effective_status, spend, impressions, clicks, ac
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         image_url: { type: 'string', description: 'URL da imagem para upload' },
       },
       required: ['account_id', 'image_url'],
@@ -1579,7 +1579,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         file_url: { type: 'string', description: 'URL do vídeo para upload' },
         title: { type: 'string', description: 'Título do vídeo' },
         description: { type: 'string', description: 'Descrição do vídeo' },
@@ -1606,7 +1606,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome do value rule set' },
         rules: { type: 'array', items: { type: 'object' }, description: 'Array de regras de valor. Cada regra: {name, adjust_sign: "INCREASE"|"DECREASE", adjust_value: 1-1000, criterias: [{criteria_type: "AGE"|"GENDER"|"LOCATION"|"OS_TYPE"|"DEVICE_PLATFORM"|"PLACEMENT", operator: "CONTAINS", criteria_values: [...], criteria_value_types: [...]}]}' },
       },
@@ -1619,7 +1619,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
       },
       required: ['account_id'],
@@ -1669,7 +1669,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         name: { type: 'string', description: 'Nome do label' },
       },
       required: ['account_id', 'name'],
@@ -1681,7 +1681,7 @@ DICA: Use search_documentation seguido de get_document_by_path nos documentos re
     inputSchema: {
       type: 'object' as const,
       properties: {
-        account_id: { type: 'string', description: 'ID da conta de anúncios (ex: act_123456789). Use discover_ad_accounts para listar.' },
+        account_id: { type: 'string', description: 'Ad account ID (e.g. act_123456789).' },
         fields: { type: 'array', items: { type: 'string' }, description: 'Campos a retornar' },
       },
       required: ['account_id'],
