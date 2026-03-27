@@ -33,7 +33,8 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   const BASE_URL = process.env.MCP_BASE_URL || `http://localhost:${port}`;
 
   // ── Middleware global ──
-  app.use(express.json());
+  // Accept JSON with any content-type (some MCP clients may not send application/json)
+  app.use(express.json({ type: '*/*' }));
 
   // CORS para clientes web
   app.use((_req: Request, res: Response, next) => {
@@ -203,15 +204,20 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   async function mcpBearerGuard(req: Request, res: Response, next: () => void) {
     const authHeader = req.headers['authorization'] as string | undefined;
+    console.error(`[MCP] Guard — ${req.method} ${req.path}, hasAuth: ${!!authHeader}, authPrefix: ${authHeader?.substring(0, 10) || 'none'}`);
+
     if (authHeader?.startsWith('Bearer ')) {
       const authCtx = await extractAuthContext(req);
       if (!authCtx) {
+        console.error(`[MCP] Guard — 401: Bearer token invalid or expired`);
         const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
         res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl}"`);
         res.status(401).json({ error: 'invalid_token', error_description: 'Bearer token is invalid or expired' });
         return;
       }
+      console.error(`[MCP] Guard — OK: userId=${authCtx.userId}, permissions=${authCtx.permissions}`);
     } else {
+      console.error(`[MCP] Guard — 401: No Bearer token`);
       // No Bearer token at all → 401
       const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
       res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl}"`);
@@ -223,6 +229,8 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   async function mcpPost(req: Request, res: Response) {
     const sessionId = req.headers['mcp-session-id'] as string | undefined;
+
+    console.error(`[MCP] POST received — sessionId: ${sessionId || 'none'}, content-type: ${req.headers['content-type']}, body method: ${req.body?.method || 'N/A'}, hasBody: ${!!req.body}`);
 
     // Sessão existente — reutilizar transport
     if (sessionId && sessions.has(sessionId)) {
@@ -256,6 +264,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
     }
 
     // Request inválido — sem sessão e não é initialize
+    console.error(`[MCP] 400 — sessionId: ${sessionId || 'none'}, isInit: ${isInitializeRequest(req.body)}, body: ${JSON.stringify(req.body)?.substring(0, 500)}`);
     res.status(400).json({
       jsonrpc: '2.0',
       error: {
