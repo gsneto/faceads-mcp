@@ -35,8 +35,18 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   const BASE_URL = process.env.MCP_BASE_URL || `http://localhost:${port}`;
 
   // ── Middleware global ──
-  // Accept JSON with any content-type (some MCP clients may not send application/json)
-  app.use(express.json({ type: '*/*' }));
+  // Parse JSON bodies. We accept standard JSON content-types plus requests with
+  // no Content-Type header (some MCP clients omit it). URL-encoded forms used by
+  // the OAuth routes are handled by the OAuth router's own urlencoded() middleware.
+  app.use(express.json({
+    type: (req) => {
+      const ct = req.headers['content-type'] || '';
+      // Skip URL-encoded form bodies — they're handled by the OAuth router
+      if (ct.includes('application/x-www-form-urlencoded')) return false;
+      // Accept explicit JSON types or missing content-type (for MCP clients)
+      return ct.includes('json') || ct === '';
+    },
+  }));
 
   // CORS para clientes web
   app.use((_req: Request, res: Response, next) => {
