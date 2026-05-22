@@ -67,16 +67,22 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   // ── Public routes ──
 
   // Favicon (shown in Claude Desktop connector list)
-  const FAVICON_SVG = `<svg version="1.1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
-<path d="M0 0 C1.9375 1.5 1.9375 1.5 3 3 C3.53625 2.505 4.0725 2.01 4.625 1.5 C7.76313998 -0.48198314 9.34873465 -0.67064058 13 0 C16.13082696 2.73738079 18.79116591 6.0349054 19.23828125 10.2421875 C19.43661741 17.27790197 19.43661741 17.27790197 17.375 20.6875 C15 22 15 22 12.0625 22.1875 C7.88702539 20.56843842 6.04381209 17.91579927 4 14 C4 13.34 4 12.68 4 12 C3.34 12 2.68 12 2 12 C1.773125 12.9075 1.54625 13.815 1.3125 14.75 C-0.22463018 18.55622711 -1.4426017 19.97875096 -5 22 C-8.1875 21.9375 -8.1875 21.9375 -11 21 C-13.70201284 16.94698074 -13.53670457 13.75715415 -13 9 C-10.19639146 1.79072089 -7.9833629 -0.85536031 0 0 Z M8 4 C7.34 5.32 6.68 6.64 6 8 C7.98 10.97 9.96 13.94 12 17 C12.99 16.67 13.98 16.34 15 16 C14.88541307 14.56163249 14.75790884 13.12429034 14.625 11.6875 C14.55539063 10.88699219 14.48578125 10.08648437 14.4140625 9.26171875 C14.10435574 6.72775559 14.10435574 6.72775559 12 4 C10.68 4 9.36 4 8 4 Z M-4 4 C-7.04577607 6.45627102 -7.9400232 7.7324112 -8.8125 11.625 C-9.27261801 14.86821309 -9.27261801 14.86821309 -8 17 C-7.01 17 -6.02 17 -5 17 C-3.48883192 15.38011249 -3.48883192 15.38011249 -2.25 13.25 C-1.80140625 12.55390625 -1.3528125 11.8578125 -0.890625 11.140625 C0.1715336 9.04520218 0.1715336 9.04520218 -0.171875 6.796875 C-0.44515625 6.20390625 -0.7184375 5.6109375 -1 5 C-1.99 4.67 -2.98 4.34 -4 4 Z " fill="#0175EF" transform="translate(13,4)"/>
+  const FAVICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <circle cx="16" cy="16" r="16" fill="#1877F2"/>
+  <path d="M21.2 20.6l.7-4.6h-4.4v-3c0-1.3.6-2.5 2.6-2.5h2V6.6s-1.8-.3-3.6-.3c-3.6 0-6 2.2-6 6.2V16h-4v4.6h4V32h5V20.6h3.7z" fill="#FFFFFF"/>
 </svg>
 `;
 
-  app.get('/favicon.ico', (_req: Request, res: Response) => {
+  const serveFavicon = (_req: Request, res: Response) => {
     res.setHeader('Content-Type', 'image/svg+xml');
-    res.setHeader('Cache-Control', 'public, max-age=604800');
+    res.setHeader('Cache-Control', 'public, max-age=300');
     res.send(FAVICON_SVG);
-  });
+  };
+  app.get('/favicon.ico', serveFavicon);
+  app.get('/favicon.svg', serveFavicon);
+  app.get('/icon.svg', serveFavicon);
+  app.get('/icon.png', serveFavicon);
+  app.get('/apple-touch-icon.png', serveFavicon);
 
   // Health check
   app.get('/health', (_req: Request, res: Response) => {
@@ -92,6 +98,8 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
     res.json({
       resource: BASE_URL,
+      resource_name: 'Meta Ads',
+      resource_logo_uri: `${BASE_URL}/favicon.svg`,
       authorization_servers: [BASE_URL],
       bearer_methods_supported: ['header'],
       scopes_supported: ['ads_read', 'ads_management'],
@@ -102,6 +110,8 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   app.get('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
     res.json({
       issuer: BASE_URL,
+      op_logo_uri: `${BASE_URL}/favicon.svg`,
+      service_documentation: BASE_URL,
       authorization_endpoint: `${BASE_URL}/oauth/authorize`,
       token_endpoint: `${BASE_URL}/oauth/token`,
       registration_endpoint: `${BASE_URL}/oauth/register`,
