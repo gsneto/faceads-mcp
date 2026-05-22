@@ -2,6 +2,30 @@
 
 MCP Server para Facebook Marketing API - Documentação e Execução.
 
+## Deploy no Railway
+
+O repo já vem com `Dockerfile`, `railway.json` e `.env.example`. Migrations
+Prisma rodam automaticamente no start (via `scripts/docker-entrypoint.sh`).
+
+**Passos:**
+
+1. New Project → Deploy from GitHub repo → selecione este repo.
+2. No mesmo project: **+ New → Database → Add PostgreSQL**.
+3. No service da app, aba **Variables**, adicione (cole os valores
+   literalmente — o Railway resolve as expressões `${{ ... }}` no deploy):
+   - `DATABASE_URL` = `${{ Postgres.DATABASE_URL }}`
+   - `MCP_BASE_URL` = `https://${{ RAILWAY_PUBLIC_DOMAIN }}`
+   - `MCP_ENCRYPTION_KEY` = `${{ secret(64, "0123456789abcdef") }}`
+4. Aba **Settings → Networking → Generate Domain** (público).
+5. Redeploy. O healthcheck em `/health` confirma que subiu.
+
+Para virar template "1 clique" (botão Deploy on Railway no README):
+abra o projeto já configurado no dashboard → **⋯ → Create Template** →
+Publish. Como as 3 variáveis usam `${{ Postgres.* }}`, `${{ RAILWAY_PUBLIC_DOMAIN }}`
+e `${{ secret(...) }}`, nada precisa ser preenchido pelo usuário.
+Cole o markdown do botão gerado aqui no README.
+
+
 ## Visão Geral
 
 Este MCP (Model Context Protocol) permite que IAs:
