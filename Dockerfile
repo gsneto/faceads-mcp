@@ -1,6 +1,7 @@
 # ── Build stage ──
-FROM node:20-alpine AS builder
+FROM node:24-alpine AS builder
 WORKDIR /app
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 ARG RAILWAY_GIT_COMMIT_SHA
 RUN echo "build: ${RAILWAY_GIT_COMMIT_SHA:-local}"
@@ -17,7 +18,7 @@ COPY src/ ./src/
 RUN npm run build
 
 # ── Production stage ──
-FROM node:20-alpine
+FROM node:24-alpine
 WORKDIR /app
 
 ARG RAILWAY_GIT_COMMIT_SHA
@@ -32,6 +33,7 @@ COPY prisma.config.ts ./
 COPY --from=builder /app/dist/ ./dist/
 COPY docs/ ./docs/
 COPY scripts/docker-entrypoint.sh ./docker-entrypoint.sh
+RUN chmod +x ./docker-entrypoint.sh
 
 EXPOSE 3000
 

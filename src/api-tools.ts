@@ -12,6 +12,7 @@ import { MetaClient, MetaClientError } from './meta-client.js';
 import { getConfigurationError, getMetaConfig, isMetaConfigured } from './utils/config.js';
 import { getAuthContext } from './utils/auth-context.js';
 import { checkPermission } from './auth/permissions.js';
+import { redactSecrets } from './utils/redact-secrets.js';
 import {
   apiSchemas,
   validateArgs,
@@ -1857,6 +1858,18 @@ export async function handleApiTool(
   name: string,
   args: unknown
 ): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
+  const result = await handleApiToolInternal(name, args);
+  return redactSecrets(result, [
+    getAuthContext()?.accessToken || '',
+    process.env.META_ACCESS_TOKEN || '',
+    process.env.MCP_SERVER_TOKEN || '',
+  ]);
+}
+
+async function handleApiToolInternal(
+  name: string,
+  args: unknown
+): Promise<{ content: Array<{ type: 'text'; text: string }>; isError?: boolean }> {
   try {
     // Tools que não requerem API configurada
     if (name === 'get_skill') {
@@ -1874,6 +1887,14 @@ export async function handleApiTool(
     if (authCtx?.permissions === 'read') {
       // For execute_api, check the HTTP method
       const method = (args as Record<string, unknown>)?.method as string | undefined;
+      if (name === 'execute_api') {
+        const input = args as Record<string, unknown>;
+        const query = new URL(String(input.endpoint || ''), 'https://graph.facebook.com/').searchParams;
+        const keys = [...Object.keys((input.params || {}) as object), ...query.keys()];
+        if (keys.some(key => ['method', '_method', 'batch'].includes(key.toLowerCase()))) {
+          return { content: [{ type: 'text', text: 'Permission denied: method overrides and batch requests are not allowed in read-only mode.' }], isError: true };
+        }
+      }
       if (!checkPermission(name, 'read', method)) {
         return {
           content: [{ type: 'text', text: `Permission denied: "${name}" requires write access. Your API key has read-only permissions.` }],

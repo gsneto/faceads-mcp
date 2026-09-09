@@ -21,7 +21,8 @@
     "scrape:resume": "node scripts/scrape-docs.js --resume",
     "retry-errors": "node scripts/retry-errors.js",
     "discover": "node scripts/discover-urls.js",
-    "extract-links": "node scripts/extract-links.js"
+    "extract-links": "node scripts/extract-links.js",
+    "test:security": "node --test tests/security.test.mjs"
   },
   "keywords": [
     "mcp",
@@ -34,13 +35,13 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.26.0",
-    "@prisma/adapter-pg": "7.4.0",
-    "@prisma/client": "7.4.0",
+    "@modelcontextprotocol/sdk": "^1.30.0",
+    "@prisma/adapter-pg": "7.10.0",
+    "@prisma/client": "7.10.0",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.2.1",
+    "express-rate-limit": "^8.7.0",
     "pg": "^8.18.0",
-    "prisma": "7.4.0",
+    "prisma": "7.10.0",
     "zod": "^4.3.6"
   },
   "devDependencies": {
@@ -52,6 +53,6 @@
     "typescript": "^5.0.0"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=24"
   }
 }

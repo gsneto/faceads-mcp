@@ -2,6 +2,17 @@
 
 MCP Server para Facebook Marketing API - Documentação e Execução.
 
+## Fork Pratinho Pronto — configuração privada
+
+Para uma única conta, siga [SINGLE_TENANT.md](SINGLE_TENANT.md). Esse modo exige
+`MCP_SERVER_TOKEN` separado de `META_ACCESS_TOKEN`, dispensa PostgreSQL e começa
+com `MCP_PERMISSIONS=read`. O endpoint é `/mcp`. No Railway, escolha **este fork**
+como fonte antes do deploy. Não cole credenciais no código nem em URLs.
+
+Runtime atualizado para Node 24; build local: `npx prisma generate && npm run build`.
+Validação de autenticação, proteção de segredos e leitura: `npm run test:security`.
+As instruções OAuth abaixo continuam disponíveis para o modo original com banco.
+
 ## Deploy no Railway
 
 O repo já vem com `Dockerfile`, `railway.json` e `.env.example`. Migrations

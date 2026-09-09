@@ -6,6 +6,7 @@
 
 import { getMetaConfig, getConfigurationError, MetaConfig } from './utils/config.js';
 import { getAuthContext } from './utils/auth-context.js';
+import { redactSecrets } from './utils/redact-secrets.js';
 
 const META_GRAPH_URL = 'https://graph.facebook.com';
 
@@ -176,7 +177,7 @@ export class MetaClient {
 
     let data: MetaApiResponse<T>;
     try {
-      data = (await response.json()) as MetaApiResponse<T>;
+      data = redactSecrets((await response.json()) as MetaApiResponse<T>, [this.config.accessToken]);
     } catch (parseError) {
       // Erro ao fazer parse do JSON
       throw new MetaClientError({
@@ -227,7 +228,7 @@ export class MetaClient {
 
     let data: MetaApiResponse<T>;
     try {
-      data = (await response.json()) as MetaApiResponse<T>;
+      data = redactSecrets((await response.json()) as MetaApiResponse<T>, [this.config.accessToken]);
     } catch (parseError) {
       throw new MetaClientError({
         message: `Erro ao processar resposta (HTTP ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,
@@ -263,7 +264,7 @@ export class MetaClient {
 
     let data: MetaApiResponse<{ success: boolean }>;
     try {
-      data = (await response.json()) as MetaApiResponse<{ success: boolean }>;
+      data = redactSecrets((await response.json()) as MetaApiResponse<{ success: boolean }>, [this.config.accessToken]);
     } catch (parseError) {
       throw new MetaClientError({
         message: `Erro ao processar resposta (HTTP ${response.status}): ${parseError instanceof Error ? parseError.message : String(parseError)}`,

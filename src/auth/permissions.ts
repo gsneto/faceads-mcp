@@ -66,6 +66,7 @@ export const TOOL_PERMISSIONS: Record<string, PermissionLevel> = {
   delete_value_rule_set: 'write',
   create_ad_label: 'write',
   create_budget_schedule: 'write',
+  update_budget_schedule: 'write',
   delete_budget_schedule: 'write',
 
   // ── Special: execute_api checked dynamically by method ──
@@ -95,8 +96,8 @@ export function checkPermission(
 
   const required = TOOL_PERMISSIONS[toolName];
 
-  // No permission entry = unrestricted (context tools)
-  if (!required) return true;
+  // Unknown tools fail closed; these three context tools do not access Meta.
+  if (!required) return ['get_skill', 'get_playbook', 'get_andromeda'].includes(toolName);
 
   // read-only user can only use read tools
   return required === 'read';

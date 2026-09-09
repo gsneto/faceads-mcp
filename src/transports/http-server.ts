@@ -8,7 +8,7 @@
 import express from 'express';
 import type { Request, Response } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
-import { randomUUID } from 'node:crypto';
+import { randomUUID, timingSafeEqual, createHash } from 'node:crypto';
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
@@ -33,6 +33,18 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   const { port, createServer } = options;
   const app = express();
   const BASE_URL = process.env.MCP_BASE_URL || `http://localhost:${port}`;
+  const serverToken = process.env.MCP_SERVER_TOKEN;
+  const singleTenant = serverToken !== undefined;
+  const singleTenantPermission = process.env.MCP_PERMISSIONS || 'read';
+  if (singleTenant && (!serverToken || Buffer.byteLength(serverToken) < 32)) {
+    throw new Error('MCP_SERVER_TOKEN must contain at least 32 bytes');
+  }
+  if (singleTenant && !process.env.META_ACCESS_TOKEN) {
+    throw new Error('META_ACCESS_TOKEN is required in single-tenant mode');
+  }
+  if (singleTenant && !['read', 'readwrite'].includes(singleTenantPermission)) {
+    throw new Error('MCP_PERMISSIONS must be read or readwrite');
+  }
 
   // ── Middleware global ──
   // Parse JSON bodies. We accept standard JSON content-types plus requests with
@@ -96,6 +108,10 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   // OAuth Protected Resource Metadata (RFC 9728)
   app.get('/.well-known/oauth-protected-resource', (_req: Request, res: Response) => {
+    if (singleTenant) {
+      res.status(404).json({ error: 'oauth_not_enabled' });
+      return;
+    }
     res.json({
       resource: BASE_URL,
       resource_name: 'Meta Ads',
@@ -108,6 +124,10 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   // OAuth Authorization Server Metadata (RFC 8414)
   app.get('/.well-known/oauth-authorization-server', (_req: Request, res: Response) => {
+    if (singleTenant) {
+      res.status(404).json({ error: 'oauth_not_enabled' });
+      return;
+    }
     res.json({
       issuer: BASE_URL,
       op_logo_uri: `${BASE_URL}/favicon.svg`,
@@ -124,7 +144,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
   });
 
   // OAuth routes (register, authorize, token, settings)
-  if (isDatabaseConfigured()) {
+  if (!singleTenant && isDatabaseConfigured()) {
     app.use('/oauth', oauthRouter);
     console.log('  OAuth 2.0: /oauth/* (database-backed)');
   }
@@ -139,7 +159,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       const authHeader = req.headers['authorization'] as string | undefined;
       if (authHeader?.startsWith('Bearer ')) {
         // Use the token itself as key (unique per user session)
-        return `bearer:${authHeader.slice(7, 27)}`; // First 20 chars as key
+        return `bearer:${createHash('sha256').update(authHeader.slice(7)).digest('hex')}`;
       }
       return `ip:${ipKeyGenerator(req.ip ?? '0.0.0.0')}`;
     },
@@ -164,6 +184,19 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
     }
 
     const bearerToken = authHeader.slice(7);
+    if (singleTenant) {
+      const received = Buffer.from(bearerToken);
+      const expected = Buffer.from(serverToken!);
+      if (received.length !== expected.length || !timingSafeEqual(received, expected)) {
+        return null;
+      }
+      return {
+        accessToken: process.env.META_ACCESS_TOKEN!,
+        apiVersion: process.env.META_API_VERSION || 'v24.0',
+        userId: 'single-tenant',
+        permissions: singleTenantPermission as 'read' | 'readwrite',
+      };
+    }
     if (!isDatabaseConfigured()) {
       return null;
     }
@@ -226,14 +259,14 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   async function mcpBearerGuard(req: Request, res: Response, next: () => void) {
     const authHeader = req.headers['authorization'] as string | undefined;
-    console.error(`[MCP] Guard — ${req.method} ${req.path}, hasAuth: ${!!authHeader}, authPrefix: ${authHeader?.substring(0, 10) || 'none'}`);
+    console.error(`[MCP] Guard — ${req.method} ${req.path}, hasAuth: ${!!authHeader}`);
 
     if (authHeader?.startsWith('Bearer ')) {
       const authCtx = await extractAuthContext(req);
       if (!authCtx) {
         console.error(`[MCP] Guard — 401: Bearer token invalid or expired`);
         const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
-        res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl}"`);
+        res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-pratinho-pronto"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
         res.status(401).json({ error: 'invalid_token', error_description: 'Bearer token is invalid or expired' });
         return;
       }
@@ -242,7 +275,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       console.error(`[MCP] Guard — 401: No Bearer token`);
       // No Bearer token at all → 401
       const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
-      res.setHeader('WWW-Authenticate', `Bearer resource_metadata="${resourceMetadataUrl}"`);
+      res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-pratinho-pronto"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
       res.status(401).json({ error: 'unauthorized', error_description: 'Authorization: Bearer token required' });
       return;
     }
@@ -387,17 +420,17 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
 
   // Also serve MCP at root / for Claude remote connector compatibility
   // (Claude POSTs to the root URL provided by the user)
-  app.post('/', mcpBearerGuard, mcpPost);
-  app.get('/', mcpBearerGuard, mcpGet);
-  app.delete('/', mcpBearerGuard, mcpDelete);
+  app.post('/', mcpLimiter, mcpBearerGuard, mcpPost);
+  app.get('/', mcpLimiter, mcpBearerGuard, mcpGet);
+  app.delete('/', mcpLimiter, mcpBearerGuard, mcpDelete);
 
   // ── Start server ──
-  const server = app.listen(port, '0.0.0.0', () => {
+  const server = app.listen(port, process.env.MCP_HOST || '0.0.0.0', () => {
     console.log(`fb-marketing-mcp HTTP server listening on http://0.0.0.0:${port}`);
     console.log(`  MCP endpoint: POST/GET/DELETE http://0.0.0.0:${port}/mcp (also at /)`);
     console.log(`  Health check: GET http://0.0.0.0:${port}/health`);
     console.log(`  OAuth metadata: GET ${BASE_URL}/.well-known/oauth-authorization-server`);
-    console.log(`  Auth: OAuth 2.0 Bearer token only`);
+    console.log(`  Auth: ${singleTenant ? 'Single-tenant Bearer token' : 'OAuth 2.0 Bearer token'}`);
     console.log(`  Base URL: ${BASE_URL}`);
   });
 

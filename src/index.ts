@@ -62,7 +62,6 @@ function createMcpServer(): Server {
 
     // Log para debug
     console.error(`[MCP] Executando tool: ${name}`);
-    console.error(`[MCP] Args: ${JSON.stringify(args)}`);
 
     try {
       let result;
@@ -83,7 +82,7 @@ function createMcpServer(): Server {
         };
       }
 
-      console.error(`[MCP] Resultado (isError: ${result.isError || false}): ${result.content[0]?.text?.substring(0, 200)}...`);
+      console.error(`[MCP] Resultado (isError: ${result.isError || false})`);
 
       return result;
     } catch (error) {
