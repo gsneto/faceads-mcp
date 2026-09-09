@@ -31,7 +31,7 @@ with cursors. Missing purchase counts or values mean CPA/ROAS are unavailable,
 not zero. These are Meta-attributed results, not checkout-confirmed revenue.
 
 Security checks: `npm run build && npm run test:security`. Tests use invented
-tokens and a local fetch stub; they never call Meta or mutate a real campaign.
+tokens and a local HTTP server; they never call Meta or mutate a real campaign.
 
 Dependency review (2026-09-09): SDK 1.30, Prisma 7.10 and rate limiter 8.7;
 compatible transitive fixes applied. npm audit still reports advisories in the
