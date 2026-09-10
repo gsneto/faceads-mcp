@@ -1884,7 +1884,8 @@ async function handleApiToolInternal(
 
     // ── Permission gate ──
     const authCtx = getAuthContext();
-    if (authCtx?.permissions === 'read') {
+    const runtimePermission = authCtx?.permissions || process.env.MCP_PERMISSIONS;
+    if (runtimePermission === 'read') {
       // For execute_api, check the HTTP method
       const method = (args as Record<string, unknown>)?.method as string | undefined;
       if (name === 'execute_api') {

@@ -5,12 +5,29 @@ import {setTimeout as delay} from 'node:timers/promises';
 import {createServer} from 'node:net';
 import {checkPermission} from '../dist/auth/permissions.js';
 import {redactSecrets} from '../dist/utils/redact-secrets.js';
+import {handleApiTool} from '../dist/api-tools.js';
 
 test('read-only denies mutation tools, unknown tools and non-GET API calls',()=>{
   for(const tool of ['create_campaign','activate_campaign','update_budget_schedule','future_write_tool']) assert.equal(checkPermission(tool,'read'),false);
   for(const method of ['POST','DELETE','PUT','PATCH']) assert.equal(checkPermission('execute_api','read',method),false);
   assert.equal(checkPermission('execute_api','read','GET'),true);
   assert.equal(checkPermission('list_campaigns','read'),true);
+});
+
+test('stdio honors MCP_PERMISSIONS=read', async()=>{
+  const previous=process.env.MCP_PERMISSIONS;
+  process.env.MCP_PERMISSIONS='read';
+  try {
+    const denied=await handleApiTool('create_campaign',{});
+    assert.equal(denied.isError,true);
+    assert.match(denied.content[0].text,/Permission denied/);
+    const override=await handleApiTool('execute_api',{method:'GET',endpoint:'123',params:{method:'DELETE'}});
+    assert.equal(override.isError,true);
+    assert.match(override.content[0].text,/Permission denied/);
+  } finally {
+    if(previous===undefined) delete process.env.MCP_PERMISSIONS;
+    else process.env.MCP_PERMISSIONS=previous;
+  }
 });
 
 test('redacts nested tokens, error strings and pagination credentials',()=>{
