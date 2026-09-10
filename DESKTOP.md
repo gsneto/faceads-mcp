@@ -14,7 +14,7 @@ Meta. Vendas e receita do checkout continuam sendo a fonte final de confirmaçã
 
 ## Segurança
 
-- O token é criptografado pelo Windows e não volta a ser exibido.
+- O token é criptografado pelo Windows, compartilhado com o MCP local do Codex e não volta a ser exibido.
 - O MCP escuta somente em `127.0.0.1`, numa porta aleatória.
 - O segredo do transporte MCP é aleatório e renovado a cada abertura.
 - `MCP_PERMISSIONS=read` bloqueia criação, edição, ativação e pausa de campanhas.

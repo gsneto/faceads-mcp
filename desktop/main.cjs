@@ -30,6 +30,21 @@ function readToken() {
   catch { return null; }
 }
 
+async function saveCodexToken(token) {
+  const target = path.join(app.getPath('home'), '.codex', 'secrets', 'meta-ads-pratinho-pronto.dpapi');
+  const helper = path.join(__dirname, 'save-dpapi.ps1');
+  await new Promise((resolve, reject) => {
+    const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, '-TargetPath', target], {
+      windowsHide: true, stdio: ['pipe', 'ignore', 'pipe'],
+    });
+    let errorText = '';
+    child.stderr.on('data', chunk => { errorText = (errorText + String(chunk)).slice(-1000); });
+    child.once('error', () => reject(new Error('Não foi possível atualizar o cofre local do Codex.')));
+    child.once('exit', code => code === 0 ? resolve() : reject(new Error(errorText.trim() || 'Não foi possível atualizar o cofre local do Codex.')));
+    child.stdin.end(token);
+  });
+}
+
 async function freePort() {
   return await new Promise((resolve, reject) => {
     const server = createServer();
@@ -167,6 +182,7 @@ ipcMain.handle('app:status', async () => ({
 ipcMain.handle('app:save-token', async (_event, token) => {
   if (typeof token !== 'string' || !/^EA[A-Za-z0-9_-]{40,}$/.test(token.trim())) throw new Error('Token Meta inválido ou incompleto.');
   if (!safeStorage.isEncryptionAvailable()) throw new Error('A criptografia do Windows não está disponível.');
+  await saveCodexToken(token.trim());
   fs.mkdirSync(path.dirname(tokenFile()), { recursive: true });
   fs.writeFileSync(tokenFile(), safeStorage.encryptString(token.trim()));
   await stopServer();
