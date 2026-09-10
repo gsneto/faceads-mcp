@@ -1,4 +1,4 @@
-# Pratinho Pronto: MCP local de uma conta
+# Meta Ads Desktop: MCP local
 
 O aplicativo desktop guarda `META_ACCESS_TOKEN` com `safeStorage` do Electron,
 define `META_API_VERSION=v24.0` e inicia o servidor em uma porta aleatória de
@@ -15,7 +15,7 @@ O painel é o cliente desse MCP local. Não existe URL pública, mensalidade de
 hospedagem ou porta aberta na rede. Não coloque credenciais em código, URLs,
 prompts, controle de versão, capturas de tela ou logs.
 
-Scope the Meta system-user token to the Pratinho Pronto ad account. The server
+Scope the Meta system-user token to only the ad accounts that should be accessible. The server
 accepts an account ID on each call; that argument is not an access-control
 boundary. The initial token and server mode should both allow only reading.
 The server's write tools remain available for later explicit enablement through

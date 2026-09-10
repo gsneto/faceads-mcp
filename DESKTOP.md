@@ -1,10 +1,10 @@
-# Meta Ads Pratinho Pronto para Windows
+# Meta Ads Desktop para Windows
 
 ## Uso
 
-1. Instale `Meta-Ads-Pratinho-Pronto-Setup-1.0.0.exe`.
-2. Abra **Meta Ads Pratinho Pronto** pelo atalho da área de trabalho.
-3. Clique em **Configurar**, informe a conta `act_281413939226359` e cole um token
+1. Instale `Meta-Ads-Desktop-Setup-1.1.0.exe`.
+2. Abra **Meta Ads Desktop** pelo atalho da área de trabalho.
+3. Clique em **Configurar**, informe qualquer conta no formato `act_123456789` e cole um token
    Meta válido com acesso de leitura à Marketing API.
 4. Clique em **Testar conexão** e depois em **Salvar**.
 5. Escolha o período. O painel carrega todas as campanhas, inclusive pausadas.

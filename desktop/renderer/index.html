@@ -4,12 +4,12 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
-  <title>Meta Ads — Pratinho Pronto</title>
+  <title>Meta Ads Desktop</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
-    <div><span class="eyebrow">PRATINHO PRONTO</span><h1>Meta Ads</h1><p>Campanhas e resultados em um painel local.</p></div>
+    <div><span class="eyebrow">PAINEL LOCAL</span><h1>Meta Ads</h1><p>Campanhas e resultados de qualquer conta de anúncios.</p></div>
     <div class="header-actions"><span id="status" class="pill neutral">Desconectado</span><button id="settingsBtn" class="secondary">Configurar</button><button id="refreshBtn">Atualizar</button></div>
   </header>
   <main>
@@ -32,7 +32,7 @@
   </main>
   <dialog id="settingsDialog">
     <form method="dialog" id="settingsForm"><div class="dialog-head"><div><span class="eyebrow">CONEXÃO LOCAL</span><h2>Configurar Meta Ads</h2></div><button value="cancel" class="icon">×</button></div>
-      <label>ID da conta de anúncios<input id="accountId" value="act_281413939226359" required></label>
+      <label>ID da conta de anúncios<input id="accountId" placeholder="act_123456789" required></label>
       <label>Novo token Meta<input id="token" type="password" autocomplete="off" placeholder="Cole somente quando quiser substituir"></label>
       <p class="security">O token é criptografado pelo Windows, atualiza também o MCP local do Codex e nunca é mostrado novamente. O MCP permanece em modo leitura.</p>
       <div id="settingsMessage" class="message hidden"></div>

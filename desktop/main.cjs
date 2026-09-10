@@ -16,7 +16,7 @@ const settingsFile = () => path.join(app.getPath('userData'), 'settings.json');
 
 function loadSettings() {
   try { return JSON.parse(fs.readFileSync(settingsFile(), 'utf8')); }
-  catch { return { accountId: 'act_281413939226359' }; }
+  catch { return { accountId: '' }; }
 }
 
 function saveSettings(settings) {
@@ -31,7 +31,7 @@ function readToken() {
 }
 
 async function saveCodexToken(token) {
-  const target = path.join(app.getPath('home'), '.codex', 'secrets', 'meta-ads-pratinho-pronto.dpapi');
+  const target = path.join(app.getPath('home'), '.codex', 'secrets', 'meta-ads-desktop.dpapi');
   const helper = path.join(__dirname, 'save-dpapi.ps1');
   await new Promise((resolve, reject) => {
     const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-File', helper, '-TargetPath', target], {
@@ -106,7 +106,7 @@ async function startServer() {
   if (!ready) { await stopServer(); throw new Error('O MCP local não iniciou. ' + startupError); }
   const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
   const { StreamableHTTPClientTransport } = await import('@modelcontextprotocol/sdk/client/streamableHttp.js');
-  mcpClient = new Client({ name: 'meta-ads-pratinho-desktop', version: '1.0.0' });
+  mcpClient = new Client({ name: 'meta-ads-desktop', version: '1.1.0' });
   const transport = new StreamableHTTPClientTransport(new URL(base + '/mcp'), {
     requestInit: { headers: { Authorization: `Bearer ${localSecret}` } },
   });
@@ -205,6 +205,7 @@ ipcMain.handle('app:test', async () => {
 
 ipcMain.handle('app:dashboard', async (_event, period = 'last_30d') => {
   const accountId = loadSettings().accountId;
+  if (!/^act_\d{5,30}$/.test(accountId || '')) throw new Error('Configure o ID da conta de anúncios.');
   const campaigns = await readAll(accountId + '/campaigns', { fields: 'id,name,status,effective_status,objective,created_time,start_time,stop_time' });
   const insights = await readAll(accountId + '/insights', {
     fields: 'campaign_id,campaign_name,spend,impressions,inline_link_clicks,actions,action_values,purchase_roas',
@@ -216,7 +217,7 @@ ipcMain.handle('app:dashboard', async (_event, period = 'last_30d') => {
 function createWindow() {
   windowRef = new BrowserWindow({
     width: 1320, height: 850, minWidth: 980, minHeight: 650,
-    backgroundColor: '#f6f3ec', title: 'Meta Ads — Pratinho Pronto',
+    backgroundColor: '#f6f3ec', title: 'Meta Ads Desktop',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { preload: path.join(__dirname, 'preload.cjs'), contextIsolation: true, nodeIntegration: false, sandbox: true },
   });

@@ -266,7 +266,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       if (!authCtx) {
         console.error(`[MCP] Guard — 401: Bearer token invalid or expired`);
         const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
-        res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-pratinho-pronto"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
+        res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-desktop"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
         res.status(401).json({ error: 'invalid_token', error_description: 'Bearer token is invalid or expired' });
         return;
       }
@@ -275,7 +275,7 @@ export async function startHttpServer(options: HttpServerOptions): Promise<void>
       console.error(`[MCP] Guard — 401: No Bearer token`);
       // No Bearer token at all → 401
       const resourceMetadataUrl = `${BASE_URL}/.well-known/oauth-protected-resource`;
-      res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-pratinho-pronto"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
+      res.setHeader('WWW-Authenticate', singleTenant ? 'Bearer realm="meta-ads-desktop"' : `Bearer resource_metadata="${resourceMetadataUrl}"`);
       res.status(401).json({ error: 'unauthorized', error_description: 'Authorization: Bearer token required' });
       return;
     }

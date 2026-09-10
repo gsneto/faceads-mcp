@@ -2,7 +2,7 @@
 
 MCP Server para Facebook Marketing API - Documentação e Execução.
 
-## Pratinho Pronto — aplicativo desktop local
+## Aplicativo desktop local
 
 Este fork é distribuído como aplicativo Windows. Ele abre um painel de campanhas,
 inicia o MCP somente em `127.0.0.1`, opera em modo leitura e guarda o token com a
@@ -19,7 +19,7 @@ npm install
 npm run desktop:dist
 ```
 
-O instalador é criado em `release/Meta-Ads-Pratinho-Pronto-Setup-1.0.0.exe`.
+O instalador é criado em `release/Meta-Ads-Desktop-Setup-1.1.0.exe`.
 
 
 ## Visão Geral
