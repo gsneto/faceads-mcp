@@ -2,39 +2,24 @@
 
 MCP Server para Facebook Marketing API - Documentação e Execução.
 
-## Fork Pratinho Pronto — configuração privada
+## Pratinho Pronto — aplicativo desktop local
 
-Para uma única conta, siga [SINGLE_TENANT.md](SINGLE_TENANT.md). Esse modo exige
-`MCP_SERVER_TOKEN` separado de `META_ACCESS_TOKEN`, dispensa PostgreSQL e começa
-com `MCP_PERMISSIONS=read`. O endpoint é `/mcp`. No Railway, escolha **este fork**
-como fonte antes do deploy. Não cole credenciais no código nem em URLs.
+Este fork é distribuído como aplicativo Windows. Ele abre um painel de campanhas,
+inicia o MCP somente em `127.0.0.1`, opera em modo leitura e guarda o token com a
+criptografia do Windows. Para instalar e usar, siga [DESKTOP.md](DESKTOP.md).
 
 Runtime atualizado para Node 24; build local: `npx prisma generate && npm run build`.
 Validação de autenticação, proteção de segredos e leitura: `npm run test:security`.
 As instruções OAuth abaixo continuam disponíveis para o modo original com banco.
 
-## Deploy no Railway
+## Gerar o instalador Windows
 
-O repo já vem com `Dockerfile`, `railway.json` e `.env.example`. Migrations
-Prisma rodam automaticamente no start (via `scripts/docker-entrypoint.sh`).
+```bash
+npm install
+npm run desktop:dist
+```
 
-**Passos:**
-
-1. New Project → Deploy from GitHub repo → selecione este repo.
-2. No mesmo project: **+ New → Database → Add PostgreSQL**.
-3. No service da app, aba **Variables**, adicione (cole os valores
-   literalmente — o Railway resolve as expressões `${{ ... }}` no deploy):
-   - `DATABASE_URL` = `${{ Postgres.DATABASE_URL }}`
-   - `MCP_BASE_URL` = `https://${{ RAILWAY_PUBLIC_DOMAIN }}`
-   - `MCP_ENCRYPTION_KEY` = `${{ secret(64, "0123456789abcdef") }}`
-4. Aba **Settings → Networking → Generate Domain** (público).
-5. Redeploy. O healthcheck em `/health` confirma que subiu.
-
-Para virar template "1 clique" (botão Deploy on Railway no README):
-abra o projeto já configurado no dashboard → **⋯ → Create Template** →
-Publish. Como as 3 variáveis usam `${{ Postgres.* }}`, `${{ RAILWAY_PUBLIC_DOMAIN }}`
-e `${{ secret(...) }}`, nada precisa ser preenchido pelo usuário.
-Cole o markdown do botão gerado aqui no README.
+O instalador é criado em `release/Meta-Ads-Pratinho-Pronto-Setup-1.0.0.exe`.
 
 
 ## Visão Geral

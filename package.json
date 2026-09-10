@@ -22,7 +22,9 @@
     "retry-errors": "node scripts/retry-errors.js",
     "discover": "node scripts/discover-urls.js",
     "extract-links": "node scripts/extract-links.js",
-    "test:security": "node --test tests/security.test.mjs"
+    "test:security": "node --test tests/security.test.mjs",
+    "desktop:start": "npm run build && electron desktop/main.cjs",
+    "desktop:dist": "npm run build && electron-builder --win nsis"
   },
   "keywords": [
     "mcp",
@@ -48,11 +50,43 @@
     "@types/express": "^5.0.6",
     "@types/node": "^20.0.0",
     "@types/pg": "^8.16.0",
+    "electron": "^44.3.0",
+    "electron-builder": "^26.15.3",
     "puppeteer": "^24.0.0",
     "turndown": "^7.2.0",
     "typescript": "^5.0.0"
   },
   "engines": {
     "node": ">=24"
+  },
+  "build": {
+    "appId": "com.gsneto.pratinhopronto.metaads",
+    "productName": "Meta Ads Pratinho Pronto",
+    "artifactName": "Meta-Ads-Pratinho-Pronto-Setup-${version}.${ext}",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "desktop/**/*",
+      "dist/**/*",
+      "docs/**/*",
+      "package.json"
+    ],
+    "extraMetadata": {
+      "main": "desktop/main.cjs"
+    },
+    "win": {
+      "icon": "desktop/assets/icon.ico",
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "allowScripts": {
+    "electron@44.3.0": true
   }
 }

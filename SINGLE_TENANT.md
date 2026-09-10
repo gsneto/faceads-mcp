@@ -1,9 +1,9 @@
-# Pratinho Pronto: private single-tenant MCP
+# Pratinho Pronto: MCP local de uma conta
 
-Set these only in Railway Variables: `META_ACCESS_TOKEN`, `META_API_VERSION=v24.0`,
-`MCP_BASE_URL=https://<public-domain>`, `MCP_SERVER_TOKEN` and `MCP_PERMISSIONS=read`.
-The MCP server token must be a separate random secret with at least 32 bytes.
-Do not reuse the Meta token as the MCP authentication token.
+O aplicativo desktop guarda `META_ACCESS_TOKEN` com `safeStorage` do Electron,
+define `META_API_VERSION=v24.0` e inicia o servidor em uma porta aleatória de
+`127.0.0.1`. A cada execução ele gera um `MCP_SERVER_TOKEN` temporário e separado.
+O token da Meta nunca é usado para autenticar o transporte MCP.
 
 When `MCP_SERVER_TOKEN` is defined, only its exact Bearer value authenticates HTTP
 clients. Missing, incorrect, empty or short secrets fail closed. The Meta token
@@ -11,10 +11,9 @@ stays on the server. PostgreSQL, database migrations and the built-in public
 OAuth registration flow are unnecessary in this mode. Without this variable,
 the original database-backed OAuth behavior and migrations are retained.
 
-Use `https://<public-domain>/mcp` for MCP and `/health` for availability checks.
-An OpenAI Responses API client needs `authorization` set to the MCP server token,
-and should retain `require_approval: "always"`. Do not put either secret in code,
-URLs, prompts, source control, screenshots or logs.
+O painel é o cliente desse MCP local. Não existe URL pública, mensalidade de
+hospedagem ou porta aberta na rede. Não coloque credenciais em código, URLs,
+prompts, controle de versão, capturas de tela ou logs.
 
 Scope the Meta system-user token to the Pratinho Pronto ad account. The server
 accepts an account ID on each call; that argument is not an access-control
@@ -39,4 +38,4 @@ Prisma CLI chain (deepmerge-ts/mysql2) and the development-only Puppeteer archiv
 chain. This is not a clean audit. Do not force a Prisma major downgrade just to
 silence it. The single-tenant runtime does not execute Prisma migrations or use
 MySQL, and the Docker build skips the optional Puppeteer browser download.
-Docker/Railway deployment must still be verified in the target environment.
+O caminho desktop empacotado é validado com o health check local antes da entrega.

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'">
+  <title>Meta Ads — Pratinho Pronto</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div><span class="eyebrow">PRATINHO PRONTO</span><h1>Meta Ads</h1><p>Campanhas e resultados em um painel local.</p></div>
+    <div class="header-actions"><span id="status" class="pill neutral">Desconectado</span><button id="settingsBtn" class="secondary">Configurar</button><button id="refreshBtn">Atualizar</button></div>
+  </header>
+  <main>
+    <section class="toolbar">
+      <div><label for="period">Período</label><select id="period"><option value="today">Hoje</option><option value="last_7d">Últimos 7 dias</option><option value="last_30d" selected>Últimos 30 dias</option><option value="this_month">Este mês</option><option value="maximum">Todo o histórico</option></select></div>
+      <p id="updated">Configure um token para carregar os dados.</p>
+    </section>
+    <section class="cards">
+      <article><span>Investimento</span><strong id="spend">—</strong></article>
+      <article><span>Compras Meta</span><strong id="purchases">—</strong></article>
+      <article><span>CPA Meta</span><strong id="cpa">—</strong></article>
+      <article><span>ROAS Meta</span><strong id="roas">—</strong></article>
+      <article><span>Checkouts</span><strong id="checkouts">—</strong></article>
+    </section>
+    <section class="panel">
+      <div class="panel-title"><div><h2>Campanhas</h2><p>Dados atribuídos pela Meta. Confirme vendas no checkout.</p></div><input id="search" type="search" placeholder="Buscar campanha"></div>
+      <div id="message" class="message hidden"></div>
+      <div class="table-wrap"><table><thead><tr><th>Campanha</th><th>Status</th><th>Gasto</th><th>Impressões</th><th>CTR</th><th>CPC</th><th>Checkouts</th><th>Compras</th><th>CPA</th><th>ROAS</th></tr></thead><tbody id="campaignRows"><tr><td colspan="10" class="empty">Nenhum dado carregado.</td></tr></tbody></table></div>
+    </section>
+  </main>
+  <dialog id="settingsDialog">
+    <form method="dialog" id="settingsForm"><div class="dialog-head"><div><span class="eyebrow">CONEXÃO LOCAL</span><h2>Configurar Meta Ads</h2></div><button value="cancel" class="icon">×</button></div>
+      <label>ID da conta de anúncios<input id="accountId" value="act_281413939226359" required></label>
+      <label>Novo token Meta<input id="token" type="password" autocomplete="off" placeholder="Cole somente quando quiser substituir"></label>
+      <p class="security">O token é criptografado pelo Windows e nunca é mostrado novamente. O MCP permanece em modo leitura.</p>
+      <div id="settingsMessage" class="message hidden"></div>
+      <div class="dialog-actions"><button type="button" id="testBtn" class="secondary">Testar conexão</button><button type="submit">Salvar</button></div>
+    </form>
+  </dialog>
+  <script src="app.js"></script>
+</body>
+</html>
+
